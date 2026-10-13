@@ -55,11 +55,11 @@ End with **STOPPED — ready for a fresh context.**
 
 ## FRESH_PROMPT.md
 
-Replace the whole file with one standalone prompt for the next task and print it in chat. Include
-the project and scope, the next task and its acceptance criteria (or to await an assignment), the
-commits expected before it starts (stop and ask if they are missing), the branch name, and the
-plan, references, and prior evidence to read. `AGENTS.md` loads automatically, so do not restate
-its rules. Never execute the prompt yourself.
+A short pointer (about five lines), not a briefing: the repository already records the state.
+At task end, replace the whole file with the next assigned task (or "none assigned: ask the
+user"), the latest commit expected on `develop` (stop and ask if it is missing), and what to read:
+the backlog, the task file, the latest plan, and the newest `docs/agent-log.md` entry. Do not
+restate `AGENTS.md`, task scope, or evidence. Print it in chat; never execute it yourself.
 
 ## Final submission gate
 
