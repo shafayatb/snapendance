@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../data/upload_queue_repository.dart';
+import '../data/upload_scheduler.dart';
 import '../domain/upload_models.dart';
 import 'uploads_state.dart';
 
@@ -12,11 +13,13 @@ import 'uploads_state.dart';
 /// read again every [pollInterval], on resume, and after writes made in this isolate.
 class UploadsCubit extends Cubit<UploadsState> {
   UploadsCubit(
-    this._repository, {
+    this._repository,
+    this._scheduler, {
     this.pollInterval = const Duration(seconds: 2),
   }) : super(const UploadsState());
 
   final UploadQueueRepository _repository;
+  final UploadScheduler _scheduler;
   final Duration pollInterval;
   Timer? _poll;
   StreamSubscription<void>? _changes;
@@ -47,6 +50,7 @@ class UploadsCubit extends Cubit<UploadsState> {
 
   Future<void> retry(int itemId) async {
     await _repository.retryItem(itemId);
+    await _scheduler.scheduleUploads();
     await load();
   }
 

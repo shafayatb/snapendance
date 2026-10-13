@@ -7,6 +7,7 @@ import 'features/camera/data/plugin_camera_service.dart';
 import 'features/uploads/data/capture_files.dart';
 import 'features/uploads/data/upload_database.dart';
 import 'features/uploads/data/upload_queue_repository.dart';
+import 'features/uploads/data/upload_scheduler.dart';
 
 Future<void> main() async {
   // Draw behind the system bars from Android 10 (API 29); Android 15+ enforces it.
@@ -19,12 +20,14 @@ Future<void> main() async {
   );
   // Before the camera can capture (plan U3).
   await uploadQueue.reconcile();
+  await WorkmanagerUploadScheduler.initialize();
 
   runApp(
     SnapendanceApp(
       attendanceLauncher: const AttendanceLauncher(),
       cameraService: const PluginCameraService(),
       uploadQueue: uploadQueue,
+      uploadScheduler: const WorkmanagerUploadScheduler(),
     ),
   );
 }

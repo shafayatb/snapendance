@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../../app/widgets/dashed_border.dart';
 import '../data/upload_queue_repository.dart';
+import '../data/upload_scheduler.dart';
 import '../domain/upload_models.dart';
 import 'uploads_cubit.dart';
 import 'uploads_state.dart';
@@ -22,8 +23,10 @@ class UploadManagerPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) =>
-          UploadsCubit(context.read<UploadQueueRepository>())..start(),
+      create: (context) => UploadsCubit(
+        context.read<UploadQueueRepository>(),
+        context.read<UploadScheduler>(),
+      )..start(),
       child: const UploadManagerView(),
     );
   }

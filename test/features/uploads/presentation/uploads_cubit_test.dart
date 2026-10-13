@@ -8,6 +8,7 @@ import 'package:snapendance/features/uploads/data/sync_engine.dart';
 import 'package:snapendance/features/uploads/data/upload_api.dart';
 import 'package:snapendance/features/uploads/data/upload_database.dart';
 import 'package:snapendance/features/uploads/data/upload_queue_repository.dart';
+import 'package:snapendance/features/uploads/data/upload_scheduler.dart';
 import 'package:snapendance/features/uploads/domain/upload_models.dart';
 import 'package:snapendance/features/uploads/presentation/uploads_cubit.dart';
 import 'package:snapendance/features/uploads/presentation/uploads_state.dart';
@@ -17,6 +18,13 @@ class RejectingApi implements UploadApi {
   @override
   Future<void> upload(UploadItem item) async =>
       throw const UploadFailure('Rejected', permanent: true);
+}
+
+class CountingScheduler implements UploadScheduler {
+  int scheduled = 0;
+
+  @override
+  Future<void> scheduleUploads() async => scheduled++;
 }
 
 class AcceptingApi implements UploadApi {
@@ -30,6 +38,7 @@ void main() {
   late UploadQueueRepository repository;
   late List<UploadItem> first;
   late List<UploadItem> second;
+  late CountingScheduler scheduler;
 
   setUpAll(sqfliteFfiInit);
 
@@ -56,6 +65,7 @@ void main() {
       db,
       CaptureFiles(Directory(p.join(temp.path, 'captures'))),
     );
+    scheduler = CountingScheduler();
     first = await queueBatch(2);
     second = await queueBatch(1);
   });
@@ -67,7 +77,7 @@ void main() {
 
   blocTest<UploadsCubit, UploadsState>(
     'loads the queued batches from the database, newest first',
-    build: () => UploadsCubit(repository),
+    build: () => UploadsCubit(repository, scheduler),
     act: (cubit) => cubit.load(),
     verify: (cubit) {
       expect(cubit.state.loaded, isTrue);
@@ -80,7 +90,7 @@ void main() {
 
   blocTest<UploadsCubit, UploadsState>(
     'shows a sync run made elsewhere; finished batches leave the list',
-    build: () => UploadsCubit(repository),
+    build: () => UploadsCubit(repository, scheduler),
     act: (cubit) async {
       await cubit.load();
       // A run outside the screen, as the background worker makes it.
@@ -95,7 +105,7 @@ void main() {
 
   blocTest<UploadsCubit, UploadsState>(
     'retry puts a failed item back in the queue',
-    build: () => UploadsCubit(repository),
+    build: () => UploadsCubit(repository, scheduler),
     act: (cubit) async {
       await SyncEngine(repository, RejectingApi()).run();
       await cubit.load();
@@ -106,12 +116,13 @@ void main() {
       final item = cubit.state.batches.last.items.first;
       expect(item.status, ItemStatus.pending);
       expect(item.attempts, 0);
+      expect(scheduler.scheduled, 1, reason: 'the retry needs a run');
     },
   );
 
   blocTest<UploadsCubit, UploadsState>(
     'remove drops a missing-file item',
-    build: () => UploadsCubit(repository),
+    build: () => UploadsCubit(repository, scheduler),
     act: (cubit) async {
       File(second.single.filePath).deleteSync();
       await repository.reconcile();
@@ -127,7 +138,7 @@ void main() {
 
   blocTest<UploadsCubit, UploadsState>(
     'resuming the app reloads',
-    build: () => UploadsCubit(repository),
+    build: () => UploadsCubit(repository, scheduler),
     act: (cubit) async {
       await cubit.load();
       await SyncEngine(repository, AcceptingApi()).run();

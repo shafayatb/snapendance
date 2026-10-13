@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Attendance reads the position only while its screen is in use; no background location.
          FINE and COARSE are requested together, as Android 12+ requires. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -7,6 +8,13 @@
     <!-- Optional, so the app also installs without a camera; the camera screen then shows its
          unavailable state. Still photos only, so no microphone permission. -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!-- Background uploads use WorkManager, which adds what it needs (network state, wake lock,
+         boot). The workmanager plugin also asks for these two, for debug notifications and
+         foreground workers that the app does not use. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_SHORT_SERVICE"
+        tools:node="remove" />
     <application
         android:label="Snapendance"
         android:name="${applicationName}"

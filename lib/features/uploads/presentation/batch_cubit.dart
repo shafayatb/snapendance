@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../camera/data/camera_service.dart';
 import '../data/upload_queue_repository.dart';
+import '../data/upload_scheduler.dart';
 import '../domain/upload_models.dart';
 import 'batch_state.dart';
 
@@ -12,12 +13,21 @@ import 'batch_state.dart';
 /// Provided app-wide, so Home and the camera show the same stored counts. The shutter passes the
 /// camera's `takePicture`, so this Cubit and `CameraCubit` do not hold each other.
 class BatchCubit extends Cubit<BatchState> {
-  BatchCubit(this._repository) : super(const BatchState()) {
+  BatchCubit(
+    this._repository,
+    this._scheduler, {
+    Duration pollInterval = const Duration(seconds: 3),
+  }) : super(const BatchState()) {
     _changes = _repository.changes.listen((_) => load());
+    // The background worker writes from its own isolate, which [changes] does not see; a
+    // count query every few seconds keeps the badge and Home honest.
+    _poll = Timer.periodic(pollInterval, (_) => load());
   }
 
   final UploadQueueRepository _repository;
+  final UploadScheduler _scheduler;
   late final StreamSubscription<void> _changes;
+  late final Timer _poll;
   int _noticeSerial = 0;
   bool _submitting = false;
 
@@ -25,6 +35,15 @@ class BatchCubit extends Cubit<BatchState> {
   Future<void> load() async {
     final stored = await _read();
     if (!isClosed) emit(_withStored(stored));
+  }
+
+  /// App start and resume: refreshes the counts (the worker may have uploaded) and makes sure
+  /// unfinished uploads have a scheduled run, in case one was lost.
+  Future<void> appResumed() async {
+    await load();
+    if (await _repository.hasUnfinishedWork()) {
+      await _scheduler.scheduleUploads();
+    }
   }
 
   /// Takes a photo and stores it in the open batch. Ignored while one is being saved.
@@ -83,6 +102,7 @@ class BatchCubit extends Cubit<BatchState> {
     _submitting = true;
     try {
       final count = await _repository.submitOpenBatch();
+      if (count > 0) await _scheduler.scheduleUploads();
       final stored = await _read();
       if (isClosed) return;
       emit(
@@ -109,6 +129,7 @@ class BatchCubit extends Cubit<BatchState> {
 
   @override
   Future<void> close() async {
+    _poll.cancel();
     await _changes.cancel();
     return super.close();
   }

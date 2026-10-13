@@ -5,14 +5,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:snapendance/features/camera/data/camera_service.dart';
 import 'package:snapendance/features/uploads/data/upload_queue_repository.dart';
+import 'package:snapendance/features/uploads/data/upload_scheduler.dart';
 import 'package:snapendance/features/uploads/domain/upload_models.dart';
 import 'package:snapendance/features/uploads/presentation/batch_cubit.dart';
 import 'package:snapendance/features/uploads/presentation/batch_state.dart';
 
 class MockUploadQueueRepository extends Mock implements UploadQueueRepository {}
 
+class MockUploadScheduler extends Mock implements UploadScheduler {}
+
 void main() {
   late MockUploadQueueRepository repository;
+  late MockUploadScheduler scheduler;
+  late bool unfinished;
   late StreamController<void> changes;
   late OpenBatch open;
   late int pending;
@@ -32,6 +37,12 @@ void main() {
 
   setUp(() {
     repository = MockUploadQueueRepository();
+    scheduler = MockUploadScheduler();
+    unfinished = false;
+    when(() => scheduler.scheduleUploads()).thenAnswer((_) async {});
+    when(
+      () => repository.hasUnfinishedWork(),
+    ).thenAnswer((_) async => unfinished);
     changes = StreamController<void>.broadcast();
     open = const OpenBatch();
     pending = 0;
@@ -67,7 +78,7 @@ void main() {
       pending = 4;
       scenario = MockScenario.failOnce;
     },
-    build: () => BatchCubit(repository),
+    build: () => BatchCubit(repository, scheduler),
     act: (cubit) => cubit.load(),
     expect: () => [
       const BatchState(
@@ -81,7 +92,7 @@ void main() {
 
   blocTest<BatchCubit, BatchState>(
     'a capture shows saving, then the stored count and thumbnail',
-    build: () => BatchCubit(repository),
+    build: () => BatchCubit(repository, scheduler),
     act: (cubit) => cubit.capture(() async => '/tmp/a.jpg'),
     expect: () => [
       const BatchState(saving: true),
@@ -91,7 +102,7 @@ void main() {
 
   blocTest<BatchCubit, BatchState>(
     'a shutter tap during a capture is ignored',
-    build: () => BatchCubit(repository),
+    build: () => BatchCubit(repository, scheduler),
     act: (cubit) async {
       final picture = Completer<String>();
       var taken = 0;
@@ -114,7 +125,7 @@ void main() {
 
   blocTest<BatchCubit, BatchState>(
     'a failed picture is reported and nothing is stored',
-    build: () => BatchCubit(repository),
+    build: () => BatchCubit(repository, scheduler),
     act: (cubit) =>
         cubit.capture(() => Future.error(const CameraCaptureException('busy'))),
     expect: () => [
@@ -129,7 +140,7 @@ void main() {
     setUp: () => when(
       () => repository.addCapture(any()),
     ).thenThrow(const CaptureSaveException('disk full')),
-    build: () => BatchCubit(repository),
+    build: () => BatchCubit(repository, scheduler),
     act: (cubit) => cubit.capture(() async => '/tmp/a.jpg'),
     expect: () => [
       const BatchState(saving: true),
@@ -140,7 +151,7 @@ void main() {
   blocTest<BatchCubit, BatchState>(
     'submitting queues the batch and announces its size',
     setUp: () => open = const OpenBatch(count: 2, lastFilePath: '/b.jpg'),
-    build: () => BatchCubit(repository),
+    build: () => BatchCubit(repository, scheduler),
     seed: () => const BatchState(openCount: 2, lastFilePath: '/b.jpg'),
     act: (cubit) => cubit.submit(),
     expect: () => [
@@ -153,7 +164,7 @@ void main() {
 
   blocTest<BatchCubit, BatchState>(
     'an empty batch is not submitted; the user is told how to start one',
-    build: () => BatchCubit(repository),
+    build: () => BatchCubit(repository, scheduler),
     act: (cubit) => cubit.submit(),
     expect: () => [
       const BatchState(notice: BatchNotice(BatchNoticeKind.emptyBatch, 1)),
@@ -164,7 +175,7 @@ void main() {
   blocTest<BatchCubit, BatchState>(
     'repeated submit taps submit once',
     setUp: () => open = const OpenBatch(count: 2, lastFilePath: '/b.jpg'),
-    build: () => BatchCubit(repository),
+    build: () => BatchCubit(repository, scheduler),
     seed: () => const BatchState(openCount: 2, lastFilePath: '/b.jpg'),
     act: (cubit) => Future.wait([cubit.submit(), cubit.submit()]),
     verify: (_) => verify(() => repository.submitOpenBatch()).called(1),
@@ -172,7 +183,7 @@ void main() {
 
   blocTest<BatchCubit, BatchState>(
     'a write elsewhere reloads the counts',
-    build: () => BatchCubit(repository),
+    build: () => BatchCubit(repository, scheduler),
     act: (cubit) async {
       await cubit.load();
       pending = 5;
@@ -184,9 +195,56 @@ void main() {
 
   blocTest<BatchCubit, BatchState>(
     'choosing a mock scenario stores it',
-    build: () => BatchCubit(repository),
+    build: () => BatchCubit(repository, scheduler),
     act: (cubit) => cubit.setScenario(MockScenario.timeout),
     expect: () => [const BatchState(scenario: MockScenario.timeout)],
     verify: (_) => expect(scenario, MockScenario.timeout),
+  );
+
+  blocTest<BatchCubit, BatchState>(
+    'submitting a batch schedules the upload work',
+    setUp: () => open = const OpenBatch(count: 1, lastFilePath: '/a.jpg'),
+    build: () => BatchCubit(repository, scheduler),
+    seed: () => const BatchState(openCount: 1, lastFilePath: '/a.jpg'),
+    act: (cubit) => cubit.submit(),
+    verify: (_) => verify(() => scheduler.scheduleUploads()).called(1),
+  );
+
+  blocTest<BatchCubit, BatchState>(
+    'an empty submit schedules nothing',
+    build: () => BatchCubit(repository, scheduler),
+    act: (cubit) => cubit.submit(),
+    verify: (_) => verifyNever(() => scheduler.scheduleUploads()),
+  );
+
+  blocTest<BatchCubit, BatchState>(
+    'starting or resuming the app schedules unfinished uploads',
+    setUp: () => unfinished = true,
+    build: () => BatchCubit(repository, scheduler),
+    act: (cubit) => cubit.appResumed(),
+    verify: (_) => verify(() => scheduler.scheduleUploads()).called(1),
+  );
+
+  blocTest<BatchCubit, BatchState>(
+    'with nothing unfinished, resuming schedules nothing',
+    build: () => BatchCubit(repository, scheduler),
+    act: (cubit) => cubit.appResumed(),
+    verify: (_) => verifyNever(() => scheduler.scheduleUploads()),
+  );
+
+  blocTest<BatchCubit, BatchState>(
+    'counts written by the background worker show up without a tap',
+    build: () => BatchCubit(
+      repository,
+      scheduler,
+      pollInterval: const Duration(milliseconds: 10),
+    ),
+    act: (cubit) async {
+      await cubit.load();
+      // The worker's isolate writes without announcing it here.
+      pending = 7;
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+    },
+    expect: () => [const BatchState(), const BatchState(pendingCount: 7)],
   );
 }

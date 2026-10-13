@@ -8,6 +8,7 @@ import 'package:snapendance/features/camera/presentation/camera_cubit.dart';
 import 'package:snapendance/features/camera/presentation/camera_page.dart';
 import 'package:snapendance/features/camera/presentation/camera_state.dart';
 import 'package:snapendance/features/uploads/data/upload_queue_repository.dart';
+import 'package:snapendance/features/uploads/data/upload_scheduler.dart';
 import 'package:snapendance/features/uploads/domain/upload_models.dart';
 import 'package:snapendance/features/uploads/presentation/batch_cubit.dart';
 import 'package:snapendance/features/uploads/presentation/batch_state.dart';
@@ -17,6 +18,8 @@ class MockCameraCubit extends MockCubit<CameraState> implements CameraCubit {}
 class MockBatchCubit extends MockCubit<BatchState> implements BatchCubit {}
 
 class MockUploadQueueRepository extends Mock implements UploadQueueRepository {}
+
+class MockUploadScheduler extends Mock implements UploadScheduler {}
 
 void main() {
   late MockCameraCubit cubit;
@@ -60,8 +63,13 @@ void main() {
     when(() => cubit.state).thenReturn(state ?? CameraState(status: status));
     if (batchState != null) when(() => batch.state).thenReturn(batchState);
     await tester.pumpWidget(
-      RepositoryProvider<UploadQueueRepository>.value(
-        value: uploadQueue,
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<UploadQueueRepository>.value(value: uploadQueue),
+          RepositoryProvider<UploadScheduler>.value(
+            value: MockUploadScheduler(),
+          ),
+        ],
         child: MaterialApp(
           home: Builder(
             builder: (context) => TextButton(
