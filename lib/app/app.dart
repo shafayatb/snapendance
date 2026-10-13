@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../features/camera/data/camera_service.dart';
 import 'home/home_screen.dart';
 import 'native/attendance_launcher.dart';
 import 'theme/app_theme.dart';
 
 class SnapendanceApp extends StatelessWidget {
-  const SnapendanceApp({super.key, required this.attendanceLauncher});
+  const SnapendanceApp({
+    super.key,
+    required this.attendanceLauncher,
+    required this.cameraService,
+  });
 
   final AttendanceLauncher attendanceLauncher;
+  final CameraService cameraService;
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +21,10 @@ class SnapendanceApp extends StatelessWidget {
       title: 'Snapendance',
       debugShowCheckedModeBanner: false,
       theme: buildLightTheme(),
-      home: HomeScreen(attendanceLauncher: attendanceLauncher),
+      home: HomeScreen(
+        attendanceLauncher: attendanceLauncher,
+        cameraService: cameraService,
+      ),
     );
   }
 }

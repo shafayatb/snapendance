@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../../features/camera/data/camera_service.dart';
+import '../../features/camera/presentation/camera_page.dart';
 import '../native/attendance_launcher.dart';
 import '../theme/app_tokens.dart';
 
@@ -10,9 +12,14 @@ import '../theme/app_tokens.dart';
 /// The Attendance card shows a static subtitle. Attendance data is stored by
 /// the native Android screen and is not shared with Flutter.
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.attendanceLauncher});
+  const HomeScreen({
+    super.key,
+    required this.attendanceLauncher,
+    required this.cameraService,
+  });
 
   final AttendanceLauncher attendanceLauncher;
+  final CameraService cameraService;
 
   Future<void> _openAttendance(BuildContext context) async {
     try {
@@ -75,6 +82,19 @@ class HomeScreen extends StatelessWidget {
                   title: 'Attendance',
                   subtitle: 'Office setup and check-in',
                   onTap: () => _openAttendance(context),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: _FeatureCard(
+                  icon: Icons.photo_camera_outlined,
+                  title: 'Camera & Uploads',
+                  // The pending-upload summary (H2) arrives with the upload queue.
+                  subtitle: 'Capture a batch of photos',
+                  onTap: () => Navigator.of(
+                    context,
+                  ).push(CameraPage.route(cameraService)),
                 ),
               ),
             ],

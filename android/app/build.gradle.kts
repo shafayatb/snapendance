@@ -7,7 +7,8 @@ plugins {
 
 android {
     namespace = "com.shafayatb.snapendance"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android 14.1 (camera permission) requires API 37 to compile against.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
