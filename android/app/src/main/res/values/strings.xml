@@ -6,6 +6,7 @@
     <!-- Step 1 card (design A1, A2, P2). -->
     <string name="office_step_title">STEP 1: OFFICE CONTEXT</string>
     <string name="office_not_saved">No office location saved</string>
+    <string name="office_loading">Loading saved office…</string>
     <string name="office_fetching">Getting GPS fix…</string>
     <string name="office_fetching_accuracy">accuracy ±%1$d m · improving</string>
     <string name="office_fetching_waiting">waiting for the first fix</string>

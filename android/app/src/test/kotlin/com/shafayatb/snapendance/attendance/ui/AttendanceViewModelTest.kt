@@ -3,6 +3,7 @@ package com.shafayatb.snapendance.attendance.ui
 import com.shafayatb.snapendance.attendance.location.LocationFix
 import com.shafayatb.snapendance.attendance.office.SavedOffice
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
@@ -89,6 +90,25 @@ class AttendanceViewModelTest {
 
         assertNull(viewModel.uiState.value.office)
         assertEquals(listOf(AttendanceEvent.OfficeLoadFailed), events)
+    }
+
+    @Test
+    fun setOfficeWaitsUntilTheSavedOfficeHasLoaded() = runTest {
+        store = FakeOfficeStore(savedOffice)
+        val read = CompletableDeferred<Unit>()
+        store.readGate = read
+        val viewModel = viewModel()
+
+        // Before the first read, no office is not the same as none saved: a tap must not replace
+        // the saved office without the confirmation.
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+        assertNull(viewModel.uiState.value.fixAttempt)
+        assertEquals(0, source.activeRequests)
+
+        read.complete(Unit)
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+        assertTrue(viewModel.uiState.value.isReplaceConfirmationVisible)
+        assertNull(viewModel.uiState.value.fixAttempt)
     }
 
     @Test

@@ -6,6 +6,11 @@ import com.shafayatb.snapendance.attendance.office.SavedOffice
 data class AttendanceUiState(
     /** The saved office, or null when none is saved (or it could not be read). */
     val office: SavedOffice? = null,
+    /**
+     * False until the store's first read finishes. Before that a null [office] means "not known
+     * yet", so Set Office Location is disabled.
+     */
+    val isOfficeLoaded: Boolean = false,
     /** Non-null while Set Office Location is waiting for a usable fix. */
     val fixAttempt: FixAttempt? = null,
     /** Set Office Location was tapped with an office already saved; the user must confirm. */

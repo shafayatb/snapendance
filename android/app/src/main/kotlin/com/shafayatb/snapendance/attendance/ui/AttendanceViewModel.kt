@@ -65,7 +65,9 @@ class AttendanceViewModel(
                     emit(null)
                     _events.send(AttendanceEvent.OfficeLoadFailed)
                 }
-                .collect { office -> _uiState.update { it.copy(office = office) } }
+                .collect { office ->
+                    _uiState.update { it.copy(office = office, isOfficeLoaded = true) }
+                }
         }
     }
 
@@ -96,6 +98,8 @@ class AttendanceViewModel(
     private fun onSetOfficeClick() {
         // One attempt at a time: a second tap must not open a second location request.
         if (fixJob?.isActive == true) return
+        // Until the saved office is read, a replace would skip its confirmation.
+        if (!_uiState.value.isOfficeLoaded) return
         when {
             permission != LocationPermission.Precise -> {
                 setOfficeAfterPermission = true

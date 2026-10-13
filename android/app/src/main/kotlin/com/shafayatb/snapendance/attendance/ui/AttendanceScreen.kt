@@ -200,6 +200,7 @@ fun AttendanceScreen(
         ) {
             OfficeContextCard(
                 office = state.office,
+                isOfficeLoaded = state.isOfficeLoaded,
                 fixAttempt = state.fixAttempt,
                 isBlocked = state.blocker != null,
                 onSetOfficeClick = { onAction(AttendanceAction.SetOfficeClick) },
@@ -327,7 +328,7 @@ private fun Context.startSettings(intent: Intent) {
 private fun AttendanceScreenPreview() {
     AttendanceTheme {
         AttendanceScreen(
-            state = AttendanceUiState(),
+            state = AttendanceUiState(isOfficeLoaded = true),
             onAction = {},
             onRecoveryClick = {},
             onNavigateBack = {},

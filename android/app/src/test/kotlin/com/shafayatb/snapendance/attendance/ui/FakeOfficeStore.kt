@@ -3,6 +3,7 @@ package com.shafayatb.snapendance.attendance.ui
 import com.shafayatb.snapendance.attendance.office.OfficeStore
 import com.shafayatb.snapendance.attendance.office.SavedOffice
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
@@ -18,7 +19,11 @@ class FakeOfficeStore(initial: SavedOffice? = null) : OfficeStore {
     var readFailure: IOException? = null
     var saveFailure: IOException? = null
 
+    /** When set, the first read waits for it, like a cold DataStore file read. */
+    var readGate: CompletableDeferred<Unit>? = null
+
     override val office: Flow<SavedOffice?> = flow {
+        readGate?.await()
         readFailure?.let { throw it }
         emitAll(stored)
     }

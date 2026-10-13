@@ -59,12 +59,13 @@ import kotlin.math.roundToInt
 
 /**
  * "Step 1: Office Context" (design A1, A2, P2): the saved office or why there is none, and Set
- * Office Location. [isBlocked] means a location blocker is shown below the card (A6-A8), so the
- * button is disabled.
+ * Office Location. Until [isOfficeLoaded], a null [office] is not known yet, and [isBlocked] means
+ * a location blocker is shown below the card (A6-A8); either disables the button.
  */
 @Composable
 fun OfficeContextCard(
     office: SavedOffice?,
+    isOfficeLoaded: Boolean,
     fixAttempt: FixAttempt?,
     isBlocked: Boolean,
     onSetOfficeClick: () -> Unit,
@@ -73,6 +74,7 @@ fun OfficeContextCard(
     val content = when {
         fixAttempt != null -> CardContent.Fetching
         office != null -> CardContent.Saved
+        !isOfficeLoaded -> CardContent.Loading
         isBlocked -> CardContent.Unavailable
         else -> CardContent.NotSaved
     }
@@ -88,6 +90,7 @@ fun OfficeContextCard(
         ) {
             CardHeader(dotColor = content.dotColor())
             when (content) {
+                CardContent.Loading -> LoadingPanel()
                 CardContent.NotSaved -> EmptyPanel()
                 CardContent.Fetching -> FetchingPanel(checkNotNull(fixAttempt).latestAccuracyMeters)
                 CardContent.Unavailable -> UnavailablePanel()
@@ -101,7 +104,7 @@ fun OfficeContextCard(
             SetOfficeButton(
                 style = when {
                     content == CardContent.Fetching -> ButtonStyle.Fetching
-                    isBlocked -> ButtonStyle.Disabled
+                    content == CardContent.Loading || isBlocked -> ButtonStyle.Disabled
                     office == null -> ButtonStyle.Filled
                     else -> ButtonStyle.Outlined
                 },
@@ -112,6 +115,7 @@ fun OfficeContextCard(
 }
 
 private enum class CardContent(val helperText: Int) {
+    Loading(R.string.office_helper_not_saved),
     NotSaved(R.string.office_helper_not_saved),
     Fetching(R.string.office_helper_fetching),
     Unavailable(R.string.office_helper_blocked),
@@ -120,7 +124,7 @@ private enum class CardContent(val helperText: Int) {
 
 @Composable
 private fun CardContent.dotColor(): Color = when (this) {
-    CardContent.NotSaved -> MaterialTheme.colorScheme.onSurfaceVariant
+    CardContent.Loading, CardContent.NotSaved -> MaterialTheme.colorScheme.onSurfaceVariant
     CardContent.Fetching -> AttendanceTheme.statusColors.pending.color
     CardContent.Unavailable -> MaterialTheme.colorScheme.error
     CardContent.Saved -> MaterialTheme.colorScheme.primary
@@ -173,6 +177,18 @@ private fun EmptyPanel() {
     ) {
         PanelIcon(R.drawable.ic_add_location_alt)
         PanelText(stringResource(R.string.office_not_saved), MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun LoadingPanel() {
+    CenteredPanel(modifier = Modifier.solidPanel()) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            strokeWidth = 2.dp,
+        )
+        PanelText(stringResource(R.string.office_loading), MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -420,7 +436,13 @@ private val previewOffice = SavedOffice(
 @Composable
 private fun NotSavedPreview() {
     AttendanceTheme {
-        OfficeContextCard(office = null, fixAttempt = null, isBlocked = false, onSetOfficeClick = {})
+        OfficeContextCard(
+            office = null,
+            isOfficeLoaded = true,
+            fixAttempt = null,
+            isBlocked = false,
+            onSetOfficeClick = {},
+        )
     }
 }
 
@@ -428,7 +450,13 @@ private fun NotSavedPreview() {
 @Composable
 private fun FetchingPreview() {
     AttendanceTheme {
-        OfficeContextCard(office = null, fixAttempt = FixAttempt(18f), isBlocked = false, onSetOfficeClick = {})
+        OfficeContextCard(
+            office = null,
+            isOfficeLoaded = true,
+            fixAttempt = FixAttempt(18f),
+            isBlocked = false,
+            onSetOfficeClick = {},
+        )
     }
 }
 
@@ -436,7 +464,13 @@ private fun FetchingPreview() {
 @Composable
 private fun SavedPreview() {
     AttendanceTheme {
-        OfficeContextCard(office = previewOffice, fixAttempt = null, isBlocked = false, onSetOfficeClick = {})
+        OfficeContextCard(
+            office = previewOffice,
+            isOfficeLoaded = true,
+            fixAttempt = null,
+            isBlocked = false,
+            onSetOfficeClick = {},
+        )
     }
 }
 
@@ -444,6 +478,12 @@ private fun SavedPreview() {
 @Composable
 private fun BlockedPreview() {
     AttendanceTheme {
-        OfficeContextCard(office = null, fixAttempt = null, isBlocked = true, onSetOfficeClick = {})
+        OfficeContextCard(
+            office = null,
+            isOfficeLoaded = true,
+            fixAttempt = null,
+            isBlocked = true,
+            onSetOfficeClick = {},
+        )
     }
 }
