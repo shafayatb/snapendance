@@ -1,6 +1,6 @@
 # Task 09: Upload Manager screen
 
-**Status:** Not started · **Depends on:** 08 · **Track:** Flutter uploads
+**Depends on:** 08 · **Track:** Flutter uploads
 
 ## Goal
 

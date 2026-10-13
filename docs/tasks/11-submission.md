@@ -1,6 +1,6 @@
 # Task 11: Submission
 
-**Status:** Not started · **Depends on:** all · **Track:** delivery
+**Depends on:** all · **Track:** delivery
 
 ## Goal
 

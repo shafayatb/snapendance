@@ -1,105 +1,65 @@
 # Snapendance Delivery Reference
 
-## Task scope and preparation
+## Task flow
 
-Work on one explicitly assigned task at a time. A task has one reviewable outcome and acceptance
-criteria; attendance, camera controls, persistence, and background recovery are not a single giant
-acceptance gate. Keep the app buildable after each implementation task.
+1. **Assign.** Work only on a task the user assigned; if none is assigned, say so. Create its
+   branch as described in the [Git reference](git.md).
+2. **Plan.** Read the task file and the references it lists, inspect the code, and settle the
+   task's open decisions. Save the plan to `docs/plans/YYYY-MM-DD-<task>.md` as ordered,
+   commit-sized steps, each with a suggested commit message. Get approval before implementing.
+3. **Step.** Implement one step: its test first ([verification](verification.md)), then the
+   minimum code, then its focused checks. A step is one small, coherent change that keeps the
+   build green. If it grows bigger than planned, stop and propose a split.
+4. **Step checkpoint.** Report the files changed, what to look for in the diff, the checks run,
+   and the suggested commit message, then stop. Continue only after the user says the step is
+   committed or asks for changes. If the previous step is still uncommitted, ask before adding
+   more.
+5. **Task review.** After the last step, dispatch one read-only review agent on the whole task
+   diff, or on a single step if the user asks. Give it a self-contained prompt: the task file and
+   plan, the diff and new files, the specs, and the checks to run. Tell it not to edit files or
+   report small visual differences. It returns severity-ordered findings with file/line
+   references, command results, skipped checks, and a verdict. Confirm each finding against the
+   code, fix confirmed in-scope ones as their own step, and report out-of-scope ones without
+   implementing them.
+6. **Task end.** Update the task's status in the [backlog](../tasks/README.md), add the task's
+   entry to `docs/agent-log.md`, rewrite `FRESH_PROMPT.md`, give the completion report, and stop.
 
-Before product implementation, read the project instructions/references, inspect the current code,
-settle consequential decisions, and save the agreed plan to `docs/plans/YYYY-MM-DD-<task>.md`.
-The plan breaks the task into ordered, commit-sized steps, each with a suggested commit message.
-Show the plan before implementing, then implement one step at a time and stop at each commit
-checkpoint for the user's diff review ([Git reference](git.md)). Never one-shot a task. The current request to write agent rules does not authorize
-app implementation, a new Git repository, or publication.
+Mid-task, a fresh session finds its place from the plan and `git log`; `FRESH_PROMPT.md` changes
+only at task end.
 
-The preparatory documents are not an approved product design or implementation plan. Preserve
-proposed-versus-approved labels. If no next task has been assigned or agreed, say so rather than
-inventing approval in a handoff prompt.
+Docs/rules-only edits need no review agent, log entry, `FRESH_PROMPT.md`, or device run unless the
+user asks. Report the files changed and the checks run.
 
-## Git
+## Agent log
 
-Git ownership, the simplified Gitflow branch workflow, and commit conventions are in the
-[Git reference](git.md). Read it at task boundaries and before suggesting any Git step.
+One entry per task in `docs/agent-log.md`: the user's actual requests, approach, decisions,
+problems, test/device evidence, review verdict, and Git status. Leave out prompts the user asks
+not to log, commits that did not happen, and credentials, precise locations, or captured images.
 
-## Implementation task completion report
+## Task completion report
 
-Deliver a report in chat with:
+In chat:
 
-1. **Completed task:** exact scope and acceptance status, including anything incomplete.
-2. **TDD evidence:** each test written first, the plausible regression, actual expected failure,
-   and current result. Distinguish manual hardware checks from test-first evidence.
-3. **Files changed:** each created/modified/deleted file and why.
-4. **Verification:** commands/results, device scenarios, and broader checks deliberately skipped.
-5. **Decisions/deviations:** confirmed constraints, assumptions, approved choices, and limitations.
-6. **Git** (per the [Git reference](git.md)): current branch and status when Git exists, unrelated changes, the suggested
-   Conventional Commit message(s), and the merge step for the user (for example
-   `git switch develop && git merge --no-ff feature/NN-<slug>` after review approval). If no
-   repository exists, report that without initializing one.
-7. **Next task:** the approved next task or a clear statement that none has been assigned.
-8. **Fresh-context handoff:** one self-contained prompt and its path.
+1. Scope and acceptance status, including anything incomplete.
+2. Test-first evidence: each test, the regression it catches, its observed failure, and the
+   current result. Keep manual hardware checks separate.
+3. Files changed and why.
+4. Verification: commands, device scenarios, and checks skipped.
+5. Decisions, deviations, and limitations.
+6. Review verdict and findings.
+7. Git: branch, status, suggested commit message(s), and the merge for the user
+   (`git switch develop && git merge --no-ff feature/NN-<slug>`).
+8. The next assigned task, or that none is assigned.
 
-Append the task's actual user request, approach, decisions, problems, test/device evidence, and
-Git status to `docs/agent-log.md`. Do not record a commit that did not happen or put sensitive
-credentials/location/image data into the log.
+End with **STOPPED — ready for a fresh context.**
 
-For meaningful behavioral changes, demonstrate that the regression test fails when the relevant
-behavior is removed or changed, when practical. Record the actual mutation and restore it before
-finishing. Never mutate unrelated work or claim a mutation check that did not occur. Keep tests
-claimed as regression protection in the repository.
+## FRESH_PROMPT.md
 
-## Fresh-context boundary
-
-At the end of an implementation task, replace the entire root `FRESH_PROMPT.md` with one prompt
-for the next task. Print that prompt in chat as well. The prompt must stand alone and include:
-
-- Snapendance's name, Android target, native attendance/Flutter camera boundary, and current scope.
-- The exact assigned next task and acceptance criteria, or instructions to await an assignment.
-- The task's feature branch name and that the user creates it from `develop` before work starts.
-- Relevant references, approved design/plan, current code/tests, and prior verification evidence.
-- Read/inspect-before-editing instructions and strict meaningful test-first development.
-- Implement only that task; do not scaffold later work; leave changes unstaged/uncommitted.
-- Finish verification, update the report/log and `FRESH_PROMPT.md`, and stop.
-
-Do not append historical prompts, leave the finished task's prompt active, or execute the new prompt
-yourself. End an implementation-task report with **STOPPED — ready for a fresh context.**
-
-Routine docs/rules/symlink-only edits need a concise file/check report. They do not create a new
-implementation review cycle or require `FRESH_PROMPT.md`, a new task log, or a device run.
-
-## External review handoff
-
-After an implementation task, use the project-specific local handoff directory:
-
-```text
-/tmp/snapendance-agent-review/
-  task-report.md
-  codex-review.md
-  status.txt
-```
-
-On macOS the real directory is `/private/tmp/snapendance-agent-review/`. This is temporary review
-state, not a permanent project record. Preserve durable decisions/evidence in the project log.
-
-Before a continued implementation task, read any existing report/status/review. A status of
-`changes-requested` applies only to the task identified in its report; verify and address its
-confirmed in-scope findings before new work. Approval for another task is never inherited.
-
-The implementer writes `task-report.md` with the report above plus the exact task, date, and
-acceptance status. If a different task's review files exist, archive them into a uniquely named
-task subfolder without overwriting prior history. Then set `status.txt` to `ready-for-review`.
-Do not write `codex-review.md` or approve your own work.
-
-A separate reviewer inspects the task-related code/tests/specs and runs proportional checks,
-then writes a severity-ordered review with file/line references, command results, skipped checks,
-and a verdict. The reviewer sets status to `approved` or `changes-requested` and stays read-only
-with respect to product code/tests unless the user asks for implementation. Do not dispatch a
-reviewer for routine documentation edits or claim a review without a real reviewer.
-
-Confirm review findings against the actual code. Reproduce behavioral findings test-first, record
-the remedy and evidence, and keep fixes within the assigned scope. Report out-of-scope findings
-without implementing them automatically. Update the task report and return it to `ready-for-review`
-after fixes; only the reviewer can approve.
+Replace the whole file with one standalone prompt for the next task and print it in chat. Include
+the project and scope, the next task and its acceptance criteria (or to await an assignment), the
+commits expected before it starts (stop and ask if they are missing), the branch name, and the
+plan, references, and prior evidence to read. `AGENTS.md` loads automatically, so do not restate
+its rules. Never execute the prompt yourself.
 
 ## Final submission gate
 

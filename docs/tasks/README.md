@@ -5,16 +5,8 @@ criteria, verification, and the decisions its plan must settle. The **how** belo
 plan saved to `docs/plans/YYYY-MM-DD-<task>.md` when the task starts. A task file is not
 authorization to implement; work starts only when the user assigns the task.
 
-## Workflow per task
-
-1. The user assigns a task and creates its branch `feature/NN-<task-file-slug>` from `develop`.
-   Read `AGENTS.md`, the task file, and the references it lists.
-2. Inspect the current code, settle the task's open decisions, and write the plan. Get approval.
-3. Implement the plan's steps one at a time, test-first. After each step, stop at the commit
-   checkpoint so the user reviews the diff and commits before the next step. Verify on Android and
-   record evidence in `docs/agent-log.md`.
-4. Update the task's status below, write the review handoff and `FRESH_PROMPT.md`, suggest the
-   commit message(s), and stop. After review approval the user merges into `develop` (`--no-ff`).
+The per-task workflow is in the [delivery](../agent-reference/delivery.md) and
+[Git](../agent-reference/git.md) references.
 
 Acceptance criteria may be refined in the approved plan. If a plan changes a criterion, update the
 task file in the same task so this folder stays the current scope record.
@@ -23,7 +15,7 @@ task file in the same task so this folder stays the current scope record.
 
 | # | Task | Depends on | Status |
 |---|------|------------|--------|
-| 01 | [App shell and native attendance entry](01-app-shell-native-bridge.md) | - | Not started |
+| 01 | [App shell and native attendance entry](01-app-shell-native-bridge.md) | - | Done |
 | 02 | [Attendance: set office location](02-attendance-office-setup.md) | 01 | Not started |
 | 03 | [Attendance: live distance and marking](03-attendance-distance-marking.md) | 02 | Not started |
 | 04 | [Camera preview and lifecycle](04-camera-preview.md) | 01 | Not started |
@@ -36,9 +28,11 @@ task file in the same task so this folder stays the current scope record.
 | 11 | [Submission](11-submission.md) | all | Not started |
 
 Status values: `Not started`, `Planned` (plan approved), `In progress`, `In review`, `Done`.
+Update a task's status here as it moves; task files do not carry status.
 Tasks 02-03 (native) and 04-07 (Flutter camera) are independent tracks after task 01.
 
-Task 01 is assigned (2026-10-12); its fresh-context prompt is in the root `FRESH_PROMPT.md`.
+Task 01 is done (2026-10-13). No next task is assigned yet; the root `FRESH_PROMPT.md` says to
+await one.
 
 ## Approved decisions
 
@@ -55,12 +49,12 @@ Task 01 is assigned (2026-10-12); its fresh-context prompt is in the root `FRESH
 | 2026-10-12 | Local-only (gitignored): the brief PDF, `docs/design/`, `FRESH_PROMPT.md`. |
 | 2026-10-12 | Attendance: strict ≤ 50 m, no hysteresis; usable fix ≤ 30 s old and ≤ 25 m accuracy; coordinates panel, no map. |
 | 2026-10-12 | Uploads: grouped by batch; retry limit 5; mock timeout 30 s; mock simulation sheet from the camera settings icon. |
+| 2026-10-13 | Task 01: one `navigation` channel method `openAttendance`; IBM Plex bundled in Flutter and Android; Material Icons Rounded (Flutter) and Material Symbols Rounded vectors (Compose). See the task 01 plan, D1-D2 and D6-D7. |
 
 ## Open decisions and owning task
 
 | Decision | Task |
 |----------|------|
-| Platform-channel shape; fonts and icons approach | 01 |
 | Location provider (fused vs. platform), re-setting the office | 02 |
 | Camera permission approach; how the device exposes ultra-wide (lens vs. zoom < 1.0) | 04 |
 | Lens button set, flash modes, whether the front-camera flip is included | 05 |

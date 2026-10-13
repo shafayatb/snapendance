@@ -5,8 +5,10 @@
 As inspected on 2026-10-12, the project is a Flutter starter with Android and iOS host folders, the
 counter demo, and its starter widget test. `pubspec.yaml` uses Dart SDK constraint `^3.12.2`.
 The Android namespace/application ID is `com.shafayatb.snapendance`, with a Kotlin `MainActivity`
-extending `FlutterActivity`. Toolchain at that time: Flutter 3.44.6, Dart 3.12.2, AGP 9.0.1
-(built-in Kotlin), Kotlin Gradle plugin 2.3.20, Gradle 9.1.0. The iOS bundle ID keeps its
+extending `FlutterActivity`. Toolchain at that time: Flutter 3.44.6, Dart 3.12.2, AGP 9.0.1,
+Kotlin Gradle plugin 2.3.20, Gradle 9.1.0. AGP's built-in Kotlin is off
+(`android.builtInKotlin=false` in `android/gradle.properties`); the Flutter Gradle plugin applies
+`kotlin-android` to `:app` implicitly. The iOS bundle ID keeps its
 generated value; iOS is out of scope. Inspect again before each task; these facts may change.
 
 Do not rename packages, rewrite the Gradle setup, or replace the starter until that change is part
@@ -40,10 +42,13 @@ Keep native attendance code in a focused package beneath the current Android app
 Use a Compose Activity, a ViewModel, a location source/repository, and a local office store. Do not
 rewrite attendance in Dart or substitute XML layouts for the required Compose UI.
 
-Compose is not enabled in the generated host. Enabling it needs the Compose compiler Gradle plugin
-(`org.jetbrains.kotlin.plugin.compose`) matching the project's Kotlin version, `buildFeatures {
-compose = true }`, and Compose dependencies. Follow current AGP 9 documentation, not pre-AGP-9
-Flutter + Compose recipes that apply `kotlin-android` or `composeOptions.kotlinCompilerExtensionVersion`.
+Compose is enabled since task 01: the Compose compiler Gradle plugin
+(`org.jetbrains.kotlin.plugin.compose`, same version as the Kotlin Gradle plugin), `buildFeatures {
+compose = true }`, and the Compose BOM. Do not add `composeOptions.kotlinCompilerExtensionVersion`
+(the Compose plugin replaces it). `:app` needs no explicit `kotlin-android`; the Flutter plugin
+applies it. AGP 9.0.1 and compileSdk 36 limit Compose ui to 1.11.x (BOMs before `2026.08.00`;
+the project uses `2026.06.01`). Check AAR metadata before adding AndroidX artifacts
+(`checkDebugAarMetadata`).
 
 For the approved combined app, a small platform-channel operation opens the native attendance
 Activity. Keep the boundary limited to navigation unless an approved flow needs returned data.

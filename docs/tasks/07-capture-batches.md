@@ -1,6 +1,6 @@
 # Task 07: Capture and durable batches
 
-**Status:** Not started · **Depends on:** 04 · **Track:** Flutter uploads
+**Depends on:** 04 · **Track:** Flutter uploads
 
 ## Goal
 

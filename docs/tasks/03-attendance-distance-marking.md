@@ -1,6 +1,6 @@
 # Task 03: Attendance - live distance and marking
 
-**Status:** Not started · **Depends on:** 02 · **Track:** native Android
+**Depends on:** 02 · **Track:** native Android
 
 ## Goal
 
