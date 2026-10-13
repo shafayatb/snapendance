@@ -3,6 +3,10 @@
          FINE and COARSE are requested together, as Android 12+ requires. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Optional, so the app also installs without a camera; the camera screen then shows its
+         unavailable state. Still photos only, so no microphone permission. -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <application
         android:label="Snapendance"
         android:name="${applicationName}"
