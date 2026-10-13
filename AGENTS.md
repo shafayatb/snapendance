@@ -44,7 +44,7 @@ and report it.
 | [Product](docs/agent-reference/product.md) | attendance, camera, batches, upload states, or a reference screen |
 | [Implementation](docs/agent-reference/implementation.md) | architecture, platform integration, persistence, dependencies, hardware |
 | [Verification](docs/agent-reference/verification.md) | implementing or verifying app behavior |
-| [Delivery](docs/agent-reference/delivery.md) | task boundaries, `FRESH_PROMPT.md`, review/submission handoffs |
+| [Delivery](docs/agent-reference/delivery.md) | step and task boundaries, `FRESH_PROMPT.md`, review/submission handoffs |
 | [Git](docs/agent-reference/git.md) | any Git inspection or suggestion, and task boundaries |
 | [UI design](docs/design/README.md) | building or changing any screen (frames and deviations table) |
 | [Task backlog](docs/tasks/README.md) | starting, scoping, or handing off any implementation task |
@@ -63,14 +63,16 @@ task file, and its plan, and inspect the existing repository.
 - **Verify proportionally**, run the changed journey on Android, use a real phone for camera/GPS,
   and report unverified checks honestly.
 - **One assigned task at a time.** Finish, verify, record, update the handoff, and stop.
-- **Small steps, commit checkpoints.** Never one-shot a task; stop after each commit-sized step
-  for the user's diff review. See the Git reference.
+- **Small steps, commit checkpoints.** Never one-shot a task. At each commit-sized step: separate
+  review, `FRESH_PROMPT.md` rewritten for the next step, then stop for the user's diff review.
+  See the Git and delivery references.
 - **Human-owned Git.** Leave changes unstaged and uncommitted; no Git write actions, PRs, or
   GitHub changes without explicit authorization, except creating a task's branch (see the Git
   reference). Suggest Conventional Commit messages only.
 - **AI disclosure in docs only.** Record real prompts and evidence in `docs/agent-log.md` and the
   README; no agent author identities, co-author trailers, or generated-by comments.
-- **Separate review.** Follow the delivery guide's external review handoff; never approve your own
-  work or report a review that did not occur.
+- **Separate review.** A separate read-only review agent checks every step before its commit
+  checkpoint, and each finished task goes through the delivery guide's external review handoff;
+  never approve your own work or report a review that did not occur.
 
 All shell commands must follow the referenced RTK instructions.

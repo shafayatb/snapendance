@@ -10,7 +10,8 @@ Before product implementation, read the project instructions/references, inspect
 settle consequential decisions, and save the agreed plan to `docs/plans/YYYY-MM-DD-<task>.md`.
 The plan breaks the task into ordered, commit-sized steps, each with a suggested commit message.
 Show the plan before implementing, then implement one step at a time and stop at each commit
-checkpoint for the user's diff review ([Git reference](git.md)). Never one-shot a task. The current request to write agent rules does not authorize
+checkpoint for the user's diff review ([Git reference](git.md)), after the step review and
+handoff below. Never one-shot a task. The current request to write agent rules does not authorize
 app implementation, a new Git repository, or publication.
 
 The preparatory documents are not an approved product design or implementation plan. Preserve
@@ -21,6 +22,24 @@ inventing approval in a handoff prompt.
 
 Git ownership, the simplified Gitflow branch workflow, and commit conventions are in the
 [Git reference](git.md). Read it at task boundaries and before suggesting any Git step.
+
+## Step checkpoint: review and handoff
+
+Before reporting any step's commit checkpoint, in this order:
+
+1. **Separate review.** Dispatch a read-only review agent with a self-contained prompt: the step
+   as written in the plan, the diff and new files, the specs to check against, and the checks to
+   run. It returns severity-ordered findings with file/line references, command results, skipped
+   checks, and a verdict; it never edits files. Confirm each finding against the code, fix
+   confirmed in-scope ones (re-review if the fix is non-trivial), and report out-of-scope ones
+   without implementing them.
+2. **Log** the step in `docs/agent-log.md`, including the review verdict. Leave out any prompt the
+   user asks not to log.
+3. **Handoff.** Replace `FRESH_PROMPT.md` for the next step (see the fresh-context boundary).
+4. **Checkpoint report:** files changed, what to look for in the diff, checks run, the review
+   verdict and findings, and the suggested commit message. Then stop.
+
+Routine docs/rules-only edits skip the review agent unless the user asks for one.
 
 ## Implementation task completion report
 
@@ -50,19 +69,22 @@ claimed as regression protection in the repository.
 
 ## Fresh-context boundary
 
-At the end of an implementation task, replace the entire root `FRESH_PROMPT.md` with one prompt
-for the next task. Print that prompt in chat as well. The prompt must stand alone and include:
+At every step checkpoint, replace the entire root `FRESH_PROMPT.md` with one prompt for the next
+step of the current task; after the task's last step, with one prompt for the next task. Print
+that prompt in chat as well. The prompt must stand alone and include:
 
 - Snapendance's name, Android target, native attendance/Flutter camera boundary, and current scope.
-- The exact assigned next task and acceptance criteria, or instructions to await an assignment.
+- The exact next step (from the approved plan) or next task and its acceptance criteria, or
+  instructions to await an assignment.
+- The commits expected to exist before it starts, and to stop and ask if they do not.
 - The task's feature branch name and that the user creates it from `develop` before work starts.
 - Relevant references, approved design/plan, current code/tests, and prior verification evidence.
 - Read/inspect-before-editing instructions and strict meaningful test-first development.
 - Implement only that task; do not scaffold later work; leave changes unstaged/uncommitted.
 - Finish verification, update the report/log and `FRESH_PROMPT.md`, and stop.
 
-Do not append historical prompts, leave the finished task's prompt active, or execute the new prompt
-yourself. End an implementation-task report with **STOPPED — ready for a fresh context.**
+Do not append historical prompts, leave a finished step's or task's prompt active, or execute the
+new prompt yourself. End an implementation-task report with **STOPPED — ready for a fresh context.**
 
 Routine docs/rules/symlink-only edits need a concise file/check report. They do not create a new
 implementation review cycle or require `FRESH_PROMPT.md`, a new task log, or a device run.
