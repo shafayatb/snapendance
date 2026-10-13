@@ -64,9 +64,18 @@ class BatchCubit extends Cubit<BatchState> {
     );
   }
 
-  /// Queues the open batch. Ignored when it is empty, while saving, or while a submit runs.
+  /// Queues the open batch. An empty batch only explains how to start one (C7); ignored while
+  /// saving or while a submit runs.
   Future<void> submit() async {
-    if (_submitting || state.saving || state.openCount == 0) return;
+    if (_submitting || state.saving) return;
+    if (state.openCount == 0) {
+      emit(
+        state.copyWith(
+          notice: BatchNotice(BatchNoticeKind.emptyBatch, ++_noticeSerial),
+        ),
+      );
+      return;
+    }
     _submitting = true;
     try {
       final count = await _repository.submitOpenBatch();

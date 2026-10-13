@@ -136,10 +136,12 @@ void main() {
   );
 
   blocTest<BatchCubit, BatchState>(
-    'an empty batch is not submitted',
+    'an empty batch is not submitted; the user is told how to start one',
     build: () => BatchCubit(repository),
     act: (cubit) => cubit.submit(),
-    expect: () => <BatchState>[],
+    expect: () => [
+      const BatchState(notice: BatchNotice(BatchNoticeKind.emptyBatch, 1)),
+    ],
     verify: (_) => verifyNever(() => repository.submitOpenBatch()),
   );
 

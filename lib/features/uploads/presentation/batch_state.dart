@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum BatchNoticeKind { captureFailed, batchQueued }
+enum BatchNoticeKind { captureFailed, batchQueued, emptyBatch }
 
 /// A one-off message. [serial] makes a repeated notice a new state.
 class BatchNotice extends Equatable {
