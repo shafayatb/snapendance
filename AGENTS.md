@@ -66,7 +66,8 @@ task file, and its plan, and inspect the existing repository.
 - **Small steps, commit checkpoints.** Never one-shot a task; stop after each commit-sized step
   for the user's diff review. See the Git reference.
 - **Human-owned Git.** Leave changes unstaged and uncommitted; no Git write actions, PRs, or
-  GitHub changes without explicit authorization. Suggest Conventional Commit messages only.
+  GitHub changes without explicit authorization, except creating a task's branch (see the Git
+  reference). Suggest Conventional Commit messages only.
 - **AI disclosure in docs only.** Record real prompts and evidence in `docs/agent-log.md` and the
   README; no agent author identities, co-author trailers, or generated-by comments.
 - **Separate review.** Follow the delivery guide's external review handoff; never approve your own

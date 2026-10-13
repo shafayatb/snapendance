@@ -9,6 +9,11 @@ remote/settings changes require explicit authorization for the action. A request
 feature does not automatically authorize those delivery actions. The project's Claude Code git
 guard hook blocks these commands; the user runs them, for example with `! <command>`.
 
+**Exception (authorized 2026-10-13):** agents may create a new branch with the plain forms
+`git switch -c <name> [<start>]`, `git checkout -b <name> [<start>]`, or `git branch <name>
+[<start>]`. The hook still blocks switching to an existing branch, force/reset variants
+(`-C`, `-B`, `-f`), and deleting or renaming branches.
+
 If no repository exists yet, report that and suggest the setup below; do not initialize one.
 
 ## Branch workflow (approved 2026-10-12): simplified Gitflow
@@ -25,8 +30,10 @@ If no repository exists yet, report that and suggest the setup below; do not ini
   `fix/NN-<slug>` branch from `develop`, or belongs to the next task when it is in its scope.
 - Never rebase, force-push, rewrite, or delete shared branches (`main`, `develop`, merged feature
   branches). Preserve merged branches. Never discard unrelated working changes.
-- Before starting a task, inspect the current branch read-only. If it is not the task's feature
-  branch, tell the user which branch to create or switch to and wait; do not switch it yourself.
+- Before starting a task, inspect the current branch. If the task's feature branch does not exist
+  yet and the working tree is clean, create it from `develop`
+  (`git switch -c feature/NN-<slug> develop`). If it already exists, or there are uncommitted
+  changes, tell the user what to switch to and wait.
 
 Suggested initial setup, run by the user:
 
