@@ -53,10 +53,6 @@ class PluginCameraService implements CameraService {
     } on CameraException catch (error) {
       throw CameraUnavailableException(error.description ?? error.code);
     }
-    // Recorded for the device spike (task 04): what the plugin exposes on this phone.
-    debugPrint(
-      'Cameras: ${cameras.map((c) => '${c.name}/${c.lensDirection.name}/${c.lensType.name}').join(', ')}',
-    );
     final back = cameras.where(
       (c) => c.lensDirection == CameraLensDirection.back,
     );
@@ -73,7 +69,6 @@ class PluginCameraService implements CameraService {
       await controller.setFlashMode(FlashMode.off);
       final minZoom = await controller.getMinZoomLevel();
       final maxZoom = await controller.getMaxZoomLevel();
-      debugPrint('Zoom range: $minZoom-$maxZoom');
       return _PluginCameraSession(controller, minZoom, maxZoom);
     } on CameraException catch (error) {
       await controller.dispose();

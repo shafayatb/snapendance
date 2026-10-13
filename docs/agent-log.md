@@ -718,3 +718,49 @@ The untracked `.codex/` folder (a Codex copy of the project hooks) was deleted. 
 - **Git:** `feature/03-attendance-distance-marking`, commits `861b1ea`, `12dbae4`, `5abe243`,
   `0f13f0c`, and this records commit, made by the agent with the user's authorization; merged into
   `develop` with `--no-ff` by the agent.
+
+## 2026-10-14 · Tasks 04-06: camera preview, controls, and focus (Claude Code)
+
+### Tasks 04-06 merged (triaged mode) · Essential
+
+Started from the triaged plan (`docs/plans/2026-10-14-04-camera.md`, C1-C8) under the
+authorization recorded in the task 03 entry ("I want you to commit, merge etc."). The prompts of
+the sessions for steps 1-8 were handoffs (`run @FRESH_PROMPT.md`); the last session resumed at
+step 9 with:
+
+> Run @FRESH_PROMPT.md
+
+Claude Code's auto-mode check blocked the step 9 commit because the commit authorization was in
+the handoff file, not the conversation. The agent stopped and asked; the user answered:
+
+> Commit
+
+- **Approach:** Flutter, `camera` (CameraX) plus `permission_handler`, a `CameraService` /
+  `CameraSession` boundary, and one `CameraCubit` holding permission, lifecycle, zoom, flash,
+  focus, and one-off notices. Pure zoom presets and focus mapping in `domain/`. Flash support comes
+  from Android's `FEATURE_CAMERA_FLASH` over the existing `device` channel, because the plugin
+  accepts any flash mode.
+- **Spike (A04s, SM-A047F):** `availableCameras()` = `0/back`, `1/front`, `3/front` (lens type
+  `unknown`); back camera zoom 1.0-8.0. No ultra-wide, so the buttons are 1×, 2×, 5×.
+- **Changed from the plan:** C8 releases the camera on `hidden`/`paused`, not `inactive` (the
+  permission dialog causes `inactive`). Opens run one at a time and late results are closed,
+  after a double open hung the first run on the phone.
+- **Test-first evidence** (`flutter test`, 55 at the end): presets and mapping (12), Cubit (16
+  blocTests plus fixes found on the phone, each with a failing test first: the resume caused by
+  the permission dialog, overlapping opens, a resume's `denied` replacing a permanent denial),
+  page widget tests for blocked states (4), zoom (8), focus (3), and flash (3; two failed
+  before the button existed).
+- **Device run** (Argent on the Galaxy A04s, debug APK): permission granted, refused twice → app
+  settings → granted; the stock camera evicted ours and the app reopened the camera on return;
+  closing released it (`dumpsys media.camera`); 1×/2×/5× and a 1×-8× slider kept in step; a
+  pinch from 2× read "3.9×" and stopped at 8×; a tap drew the focus ring there and CameraX ran
+  `startFocusAndMetering` with `Status(value=0)`; flash cycled Off → Auto → On → Off with no
+  errors.
+- **Not verified on the phone:** the preview image itself (lens covered, so "not stretched" and
+  the field of view at each zoom are unseen), the readout fading after a pinch (Argent's
+  synthetic pinch never sends pointer-ups), a visible refocus, the flash firing (needs capture,
+  task 07), and "Camera unavailable" (the app in front always gets the camera; tests only).
+- **Task review:** not run, by the user's triage; one review is planned at the end.
+- **Checks:** `flutter test` 55/55, `flutter analyze` clean, `git diff --check` clean.
+- **Git:** `feature/04-camera`, commits `44613c9` … `696d61a`, `0f65528`, and this records commit,
+  made by the agent with the user's authorization.
