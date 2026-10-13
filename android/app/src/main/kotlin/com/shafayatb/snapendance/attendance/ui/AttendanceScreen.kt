@@ -60,7 +60,7 @@ import com.google.android.gms.location.Priority
 import com.shafayatb.snapendance.R
 import com.shafayatb.snapendance.attendance.ui.theme.AttendanceSpacing
 import com.shafayatb.snapendance.attendance.ui.theme.AttendanceTheme
-import kotlin.math.roundToInt
+import kotlin.math.ceil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -125,8 +125,9 @@ fun AttendanceRoot(
                 return@ObserveAsEvents
             }
             AttendanceEvent.NoFix -> resources.getString(R.string.office_error_no_fix)
+            // Rounded up: a rejected 25.3 m must not read as "±25 m; ±25 m or better is needed".
             is AttendanceEvent.FixTooInaccurate -> event.bestAccuracyMeters?.let {
-                resources.getString(R.string.office_error_inaccurate, it.roundToInt())
+                resources.getString(R.string.office_error_inaccurate, ceil(it).toInt())
             } ?: resources.getString(R.string.office_error_inaccurate_unknown)
             AttendanceEvent.FixStale -> resources.getString(R.string.office_error_stale)
             AttendanceEvent.OfficeSaveFailed -> resources.getString(R.string.office_error_save)

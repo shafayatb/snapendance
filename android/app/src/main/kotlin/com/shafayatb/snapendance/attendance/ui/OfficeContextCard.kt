@@ -34,6 +34,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -405,7 +406,8 @@ private fun formatCoordinate(value: Double): String = String.format(Locale.ROOT,
 @Composable
 private fun formatSavedTime(epochMillis: Long): String {
     val timePattern = if (DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "hh:mm a"
-    val locale = Locale.getDefault()
+    // From the configuration, so a locale change recomposes with the new one.
+    val locale = LocalConfiguration.current.locales[0]
     val time = SimpleDateFormat(timePattern, locale).format(Date(epochMillis))
     val saved = Calendar.getInstance().apply { timeInMillis = epochMillis }
     val today = Calendar.getInstance()
