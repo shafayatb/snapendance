@@ -9,9 +9,12 @@ import 'camera_state.dart';
 /// Dark camera colors (design C1-C11). The camera is always dark; the rest of the app is light.
 abstract final class CameraColors {
   static const background = Color(0xFF0D1015);
+  static const surface = Color(0xFF1E232C);
   static const scrim = Color(0x61000000);
   static const onCamera = Color(0xFFFFFFFF);
   static const onCameraVariant = Color(0x99FFFFFF);
+  static const primary = Color(0xFF2F66DC);
+  static const link = Color(0xFF8AB4F8);
 }
 
 /// `CameraPreviewScreen`: provides [CameraCubit] and starts the camera.
@@ -83,12 +86,32 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
         body: BlocBuilder<CameraCubit, CameraState>(
           buildWhen: (previous, current) => previous.status != current.status,
           builder: (context, state) => switch (state.status) {
+            CameraStatus.initializing => const _Initializing(),
             CameraStatus.ready => const _LiveCamera(),
-            // The blocked states (C8, C9) are drawn in a later step.
-            CameraStatus.initializing ||
-            CameraStatus.permissionDenied ||
-            CameraStatus.permissionPermanentlyDenied ||
-            CameraStatus.unavailable => const _Initializing(),
+            CameraStatus.permissionDenied => const _BlockedState(
+              icon: Icons.no_photography_rounded,
+              title: 'Camera access needed',
+              body:
+                  'Snapendance needs the camera to capture photo batches. '
+                  'Allow camera access to continue.',
+              action: _BlockedAction.allow,
+            ),
+            CameraStatus.permissionPermanentlyDenied => const _BlockedState(
+              icon: Icons.no_photography_rounded,
+              title: 'Camera access needed',
+              body:
+                  'Snapendance needs the camera to capture photo batches. '
+                  'You declined access, so allow it in App settings.',
+              action: _BlockedAction.settings,
+            ),
+            CameraStatus.unavailable => const _BlockedState(
+              icon: Icons.videocam_off_rounded,
+              title: 'Camera unavailable',
+              body:
+                  'The camera couldn’t start. Another app may be using it. '
+                  'Close other camera apps and try again.',
+              action: _BlockedAction.retry,
+            ),
           },
         ),
       ),
@@ -212,6 +235,117 @@ class _RoundButton extends StatelessWidget {
         backgroundColor: CameraColors.scrim,
         fixedSize: const Size.square(48),
       ),
+    );
+  }
+}
+
+enum _BlockedAction { allow, settings, retry }
+
+/// C8 (permission) and C9 (camera unavailable).
+class _BlockedState extends StatelessWidget {
+  const _BlockedState({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final _BlockedAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<CameraCubit>();
+    final (label, actionIcon, onPressed) = switch (action) {
+      _BlockedAction.allow => (
+        'Allow camera access',
+        Icons.arrow_forward_rounded,
+        cubit.retry,
+      ),
+      _BlockedAction.settings => (
+        'Open app settings',
+        Icons.open_in_new_rounded,
+        cubit.openAppSettings,
+      ),
+      _BlockedAction.retry => ('Try again', Icons.refresh_rounded, cubit.retry),
+    };
+    return Stack(
+      children: [
+        Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 96),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: const BoxDecoration(
+                    color: CameraColors.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: CameraColors.onCameraVariant,
+                    size: 34,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: CameraColors.onCamera,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  body,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: CameraColors.onCameraVariant,
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: onPressed,
+                  icon: Icon(actionIcon),
+                  label: Text(label),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: CameraColors.primary,
+                    foregroundColor: CameraColors.onCamera,
+                    minimumSize: const Size(0, 48),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: CameraColors.link,
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: const Text('Back to home'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const _TopBar(),
+      ],
     );
   }
 }

@@ -247,6 +247,52 @@ void main() {
     );
 
     blocTest<CameraCubit, CameraState>(
+      'a resume after a permanent denial keeps the app settings action',
+      setUp: () {
+        // Android reports a permanent denial only as the answer to a request.
+        when(
+          () => service.permission(),
+        ).thenAnswer((_) async => CameraPermission.denied);
+        when(
+          () => service.requestPermission(),
+        ).thenAnswer((_) async => CameraPermission.permanentlyDenied);
+      },
+      build: () => CameraCubit(service),
+      act: (cubit) async {
+        await cubit.start();
+        // On the phone, the resume after the dialog can arrive after the answer.
+        await cubit.appResumed();
+      },
+      expect: () => [
+        const CameraState(status: CameraStatus.permissionPermanentlyDenied),
+      ],
+    );
+
+    blocTest<CameraCubit, CameraState>(
+      'permission revoked while away shows the denied state on return',
+      setUp: () {
+        when(
+          () => service.permission(),
+        ).thenAnswer((_) async => CameraPermission.granted);
+      },
+      build: () => CameraCubit(service),
+      act: (cubit) async {
+        await cubit.start();
+        await cubit.appPaused();
+        when(
+          () => service.permission(),
+        ).thenAnswer((_) async => CameraPermission.denied);
+        await cubit.appResumed();
+      },
+      expect: () => [
+        ready,
+        const CameraState(),
+        const CameraState(status: CameraStatus.permissionDenied),
+      ],
+      verify: (_) => verifyNever(() => service.requestPermission()),
+    );
+
+    blocTest<CameraCubit, CameraState>(
       'closing the screen releases the camera',
       build: () => CameraCubit(service),
       act: (cubit) async {

@@ -97,6 +97,12 @@ class CameraCubit extends Cubit<CameraState> {
     if (generation != _generation || isClosed) return;
     switch (permission) {
       case CameraPermission.denied:
+        // A check cannot report a permanent denial on Android, so it must not replace the
+        // request's answer (the resume after the dialog can arrive after it).
+        if (!askForPermission &&
+            state.status == CameraStatus.permissionPermanentlyDenied) {
+          return;
+        }
         emit(const CameraState(status: CameraStatus.permissionDenied));
         return;
       case CameraPermission.permanentlyDenied:
