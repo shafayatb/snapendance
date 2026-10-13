@@ -56,8 +56,13 @@ dependencies {
     // The saved office location (one small record).
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 
+    // AttendanceViewModel and viewModelScope.
+    implementation("androidx.lifecycle:lifecycle-viewmodel:2.10.0")
+
     // JVM unit tests for attendance logic (run with testDebugUnitTest).
     testImplementation("junit:junit:4.13.2")
+    // Matches the kotlinx-coroutines-core the app resolves (1.9.0), so tests run the same version.
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
 
     // Instrumented Compose UI tests (run on a device with connectedDebugAndroidTest).
     androidTestImplementation(composeBom)
