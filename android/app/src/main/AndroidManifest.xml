@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Attendance reads the position only while its screen is in use; no background location.
+         FINE and COARSE are requested together, as Android 12+ requires. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
         android:label="Snapendance"
         android:name="${applicationName}"

@@ -50,6 +50,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    // Device position for the office and attendance checks (Fused Location Provider).
+    implementation("com.google.android.gms:play-services-location:21.4.0")
+
     // The saved office location (one small record).
     implementation("androidx.datastore:datastore-preferences:1.2.1")
 
