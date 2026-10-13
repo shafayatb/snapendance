@@ -50,6 +50,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    // The saved office location (one small record).
+    implementation("androidx.datastore:datastore-preferences:1.2.1")
+
     // JVM unit tests for attendance logic (run with testDebugUnitTest).
     testImplementation("junit:junit:4.13.2")
 
