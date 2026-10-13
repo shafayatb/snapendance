@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+
+import '../theme/app_tokens.dart';
 
 /// The app's entry point (design frame H1): a header and one card per feature.
 ///
@@ -13,35 +16,47 @@ class HomeScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final colors = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Snapendance', style: textTheme.headlineLarge),
-                  const SizedBox(height: 4),
-                  Text(
-                    DateFormat('EEE, d MMM').format(DateTime.now()),
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colors.onSurfaceVariant,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        body: SafeArea(
+          child: ListView(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.xxl,
+                  AppSpacing.xl,
+                  AppSpacing.xl,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Snapendance', style: textTheme.headlineLarge),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      DateFormat('EEE, d MMM').format(DateTime.now()),
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: _FeatureCard(
-                icon: Icons.location_on_rounded,
-                title: 'Attendance',
-                subtitle: 'Office setup and check-in',
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: _FeatureCard(
+                  icon: Icons.location_on_outlined,
+                  title: 'Attendance',
+                  subtitle: 'Office setup and check-in',
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -65,11 +80,15 @@ class _FeatureCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Card(
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 88),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.md,
+            AppSpacing.sm,
+            AppSpacing.md,
+          ),
           child: Row(
             children: [
               Container(
@@ -81,12 +100,16 @@ class _FeatureCard extends StatelessWidget {
                 ),
                 child: Icon(icon, color: colors.primary),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: textTheme.titleMedium),
+                    // H1 sets card titles at 17 px, between titleMedium and labelLarge.
+                    Text(
+                      title,
+                      style: textTheme.titleMedium?.copyWith(fontSize: 17),
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       subtitle,
@@ -97,7 +120,7 @@ class _FeatureCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: AppSpacing.md),
               SizedBox.square(
                 dimension: 48,
                 child: Icon(

@@ -274,3 +274,20 @@ Conventions:
 
 - **Decided by the developer:** Attendance subtitle shortened to "Office setup and check-in"
   (fits on one line on the 360 dp screen).
+
+### Task 01, step 2: Flutter theme and fonts
+
+> start step 2
+
+- **Claude:** added the light tokens (`lib/app/theme/app_tokens.dart`: colors, status colors,
+  spacing, radius, font families) and `buildLightTheme()` with the type scale and a
+  `StatusColors` `ThemeExtension`. Bundled static IBM Plex Sans 400/600/700 and Plex Mono 500
+  TTFs from IBM's GitHub releases (`@ibm/plex-sans@1.1.0`, `@ibm/plex-mono@2.5.0`; the npm
+  packages ship no TTFs) with `OFL.txt`. Home now uses the tokens.
+- **Claude, after the first device screenshot:** the status bar had a grey scrim and the nav
+  bar was black, the card shadow was heavier than the design's Level 1, and the pin was filled.
+  Switched to edge-to-edge with transparent bars and dark icons, lowered the shadow alpha, and
+  used the outlined pin (closer to H1's Material Symbols glyph).
+- **Checked:** `dart format`, `flutter analyze`, `flutter build apk --debug`; on the Galaxy A04s
+  (Android 14) Home matches H1 in font, colors, spacing, card, and status bar. No Flutter tests
+  in this step (pure styling, per the plan).
