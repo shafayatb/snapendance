@@ -381,3 +381,42 @@ Conventions:
   Flutter's `color_scheme.dart`); those roles are now set explicitly. Also took its optional
   notes: a wrapped KDoc line, an accurate `ui-test-manifest` comment, and `colors.xml` naming
   `AttendanceTokens.kt`. Re-checked with `assembleDebug` and `connectedDebugAndroidTest`.
+
+### Task 01, step 5: open attendance over the method channel
+
+> run @FRESH_PROMPT.md
+
+- **Claude, test first:** `test/app/home/home_screen_test.dart` pumps the real Home with a real
+  `AttendanceLauncher`, registers a mock handler on `com.shafayatb.snapendance/navigation`
+  (the name written out in the test, so a rename in the app fails it), checks the Attendance card
+  is exposed as a button with a tap action, taps it, and asserts exactly one `openAttendance` call
+  with no arguments. Before the API existed it failed to compile; with the launcher and the
+  constructor parameter added but the tap unwired, it failed as expected: `Expected: has
+  semantics with actions: [tap] with flags: isButton ... missing actions: [tap]`.
+- **Claude, implementation:** `AttendanceLauncher` (`lib/app/native/attendance_launcher.dart`, a
+  const concrete class around the `MethodChannel`) is created in `main.dart` and passed through
+  `SnapendanceApp` to `HomeScreen` by constructor. The card is a `Card` (`Clip.antiAlias` for the
+  ripple) with `Semantics(button: true)` and an `InkWell`; the card's merged label is unchanged.
+  `MainActivity.configureFlutterEngine` registers the handler: `openAttendance` starts
+  `AttendanceActivity` with an explicit intent and replies `null`; other methods get
+  `notImplemented()`. The `startActivity` failure mapping stays in step 6: Claude checked the
+  engine's `MethodChannel.java`, which catches a handler's `RuntimeException` and replies with an
+  error envelope, so step 5 does not crash on a launch failure.
+- **Checked:** the test passes. Mutations, each restored: method `openAttendence` failed it
+  (`Expected: 'openAttendance' Actual: 'openAttendence'`); channel `.../nav` failed it
+  (`Expected: an object with length of <1> Actual: []`). `dart format`, `flutter analyze`,
+  `flutter test`, `flutter build apk --debug`, `assembleDebug`, `connectedDebugAndroidTest`
+  (existing native test still passes), `git diff --check`.
+- **Checked on device:** Galaxy A04s (Android 14), debug APK reinstalled after the instrumented
+  run. Android's accessibility tree shows the card as a clickable Button. Tapping it opens A1;
+  the back arrow and system Back each return to Home; six round trips in all (three each), every
+  screen confirmed. Afterwards the task holds only `MainActivity` (`sz=1`); logcat shows no crash
+  or channel errors. Not checked here: rapid double taps (step 7).
+- **Separate review (read-only agent):** approved, no Critical or Major findings; it confirmed
+  the channel/method names, the single reply on every path, no Activity leak (the engine is owned
+  by `MainActivity`), the semantics merge, and the engine claim. Fixed both Minor findings: the
+  redundant `ensureSemantics()` handle (`testWidgets` enables semantics by default and the
+  handle leaked if an expect failed) and the launcher doc comment ("accepted the request to
+  start it", since `startActivity` only queues the launch). Its Optional note is for step 6: the
+  `onTap: attendanceLauncher.open` tear-off drops the future and must become an awaited, caught
+  call. Re-checked with `dart format`, `flutter analyze`, `flutter test`, `git diff --check`.

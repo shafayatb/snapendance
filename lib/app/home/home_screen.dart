@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../native/attendance_launcher.dart';
 import '../theme/app_tokens.dart';
 
 /// The app's entry point (design frame H1): a header and one card per feature.
@@ -9,7 +10,9 @@ import '../theme/app_tokens.dart';
 /// The Attendance card shows a static subtitle. Attendance data is stored by
 /// the native Android screen and is not shared with Flutter.
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, required this.attendanceLauncher});
+
+  final AttendanceLauncher attendanceLauncher;
 
   @override
   Widget build(BuildContext context) {
@@ -48,12 +51,13 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: _FeatureCard(
                   icon: Icons.location_on_outlined,
                   title: 'Attendance',
                   subtitle: 'Office setup and check-in',
+                  onTap: attendanceLauncher.open,
                 ),
               ),
             ],
@@ -69,11 +73,13 @@ class _FeatureCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -85,56 +91,65 @@ class _FeatureCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 88),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.md,
-            AppSpacing.sm,
-            AppSpacing.md,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: colors.primary),
+      // Clips the ripple to the rounded corners.
+      clipBehavior: Clip.antiAlias,
+      // The card merges its texts into one label; this makes it a button.
+      child: Semantics(
+        button: true,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 88),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // H1 sets card titles at 17 px, between titleMedium and labelLarge.
-                    Text(
-                      title,
-                      style: textTheme.titleMedium?.copyWith(fontSize: 17),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      subtitle,
-                      style: textTheme.bodyMedium?.copyWith(
-                        height: 18 / 14,
-                        color: colors.onSurfaceVariant,
-                      ),
+                    child: Icon(icon, color: colors.primary),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // H1 sets card titles at 17 px, between titleMedium and labelLarge.
+                        Text(
+                          title,
+                          style: textTheme.titleMedium?.copyWith(fontSize: 17),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          subtitle,
+                          style: textTheme.bodyMedium?.copyWith(
+                            height: 18 / 14,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  SizedBox.square(
+                    dimension: 48,
+                    child: Icon(
+                      Icons.chevron_right_rounded,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.md),
-              SizedBox.square(
-                dimension: 48,
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  color: colors.onSurfaceVariant,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
