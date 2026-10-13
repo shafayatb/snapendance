@@ -23,7 +23,7 @@ task file in the same task so this folder stays the current scope record.
 
 | # | Task | Depends on | Status |
 |---|------|------------|--------|
-| 01 | [App shell and native attendance entry](01-app-shell-native-bridge.md) | - | Not started |
+| 01 | [App shell and native attendance entry](01-app-shell-native-bridge.md) | - | In progress |
 | 02 | [Attendance: set office location](02-attendance-office-setup.md) | 01 | Not started |
 | 03 | [Attendance: live distance and marking](03-attendance-distance-marking.md) | 02 | Not started |
 | 04 | [Camera preview and lifecycle](04-camera-preview.md) | 01 | Not started |

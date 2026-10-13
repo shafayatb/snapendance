@@ -242,3 +242,35 @@ Conventions:
   the backfill covers Claude sessions only.
 - **Claude:** started this log, backfilled from the two Claude Code session transcripts, and
   marked the essential prompts.
+
+### Task 01, step 1: Home replaces the counter
+
+> committed, plan approved, start step 1
+
+- **Decided by the developer:** the task 01 plan is approved as written.
+- **Claude:** first wrote a hand-rolled `formatHomeDate` test-first (tests failed against an
+  empty stub, then passed). Added `SnapendanceApp` and the H1 Home layout with the static Attendance subtitle, set the
+  launcher label to "Snapendance", and removed the counter demo, its test, and `cupertino_icons`.
+
+> Short form date works. No need to add verbiage. like Tue would work. And use date format rather
+> than making your own weekdays and months
+
+- **Decided by the developer:** short date ("Tue, 13 Oct") using `intl`'s `DateFormat`.
+- **Claude:** replaced the hand-rolled formatter with `DateFormat('EEE, d MMM')` inline in Home
+  and removed the formatter and its tests, which would now only test `intl`.
+- **Checked:** the pattern prints "Tue, 13 Oct", "Sun, 18 Oct", "Fri, 1 Jan" for sample dates;
+  `dart format`, `flutter analyze`, `flutter build apk --debug`. No Flutter tests remain after
+  this step.
+
+> Test on the connected device first
+
+- **Checked on device:** Samsung Galaxy A04s (SM-A047F), Android 14, debug APK. Launch shows
+  the Snapendance Home with "Tue, 13 Oct" and the Attendance card, not the counter; the APK's
+  application label is "Snapendance"; rotation to landscape and back keeps the layout intact.
+  The default Material theme (Roboto, purple) is expected until step 2. On this 360 dp-wide
+  screen the Attendance subtitle wrapped to two lines.
+
+> shorten it, then I'll commit
+
+- **Decided by the developer:** Attendance subtitle shortened to "Office setup and check-in"
+  (fits on one line on the 360 dp screen).

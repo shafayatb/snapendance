@@ -1,7 +1,7 @@
 # Plan: Task 01, app shell and native attendance entry
 
 **Task:** [01-app-shell-native-bridge](../tasks/01-app-shell-native-bridge.md) ·
-**Branch:** `feature/01-app-shell-native-bridge` (from `develop`) · **Status:** awaiting approval
+**Branch:** `feature/01-app-shell-native-bridge` (from `develop`) · **Status:** approved 2026-10-13
 
 ## Current state (inspected 2026-10-13)
 
@@ -27,7 +27,7 @@
 | D7 | Icons | Flutter: built-in `Icons.*_rounded` (Material Icons Rounded, no dependency). Compose: Material Symbols Rounded vector drawables added per icon (only `arrow_back` now), not the frozen `material-icons-core`/`-extended` libraries. The two families differ slightly in glyph detail; recorded as a design deviation. |
 | D8 | Token consistency | Two hand-written token files with identical token names and values, each pointing to `docs/design/Design System.dc.html`: `lib/app/theme/app_tokens.dart` and `.../attendance/ui/theme/AttendanceTokens.kt`. No code generation. A change to one requires the same change to the other (noted in both files). |
 | D9 | Theme scope | Light scheme only (camera dark scheme is added with the camera task). Colors, status colors (`ThemeExtension` / `CompositionLocal` data class), type scale, spacing, radius. |
-| D10 | Home copy | Header "Snapendance" + today's date ("Monday, 13 October", English, formatted by a small pure function, no `intl`). Attendance card: `location_on` tile, title "Attendance", static subtitle "Set the office and mark attendance" (grey, no status dot, because H1's "Office not set" is live native state). Only the Attendance card. |
+| D10 | Home copy | Header "Snapendance" + today's date in short form ("Tue, 13 Oct", `intl` `DateFormat('EEE, d MMM')`). Attendance card: `location_on` tile, title "Attendance", static subtitle "Office setup and check-in" (grey, no status dot, because H1's "Office not set" is live native state). Only the Attendance card. |
 | D11 | Compose setup | Plugin `org.jetbrains.kotlin.plugin.compose` 2.3.20 (matches KGP); `buildFeatures { compose = true }`; Compose BOM `2026.09.00` (ui 1.12.1, material3 1.4.0), `activity-compose` 1.13.0, `ui-tooling-preview` (+ `ui-tooling` debug only). `enableEdgeToEdge` with dark status-bar icons; window background `#EEF2F7` to avoid a white flash. |
 | D12 | Native test | One instrumented Compose test (`createAndroidComposeRule<AttendanceActivity>`): tapping the back arrow finishes the Activity. Adds `ui-test-junit4`/`ui-test-manifest` and the AndroidX test runner; tasks 02-03 reuse this setup. |
 | D13 | Starter cleanup | Remove `cupertino_icons` and the counter test along with the counter. Launcher label and `MaterialApp.title` become "Snapendance". |
@@ -40,10 +40,8 @@ lib/app/app.dart                                SnapendanceApp (MaterialApp, the
 lib/app/theme/app_tokens.dart                   colors, status colors, spacing, radius
 lib/app/theme/app_theme.dart                    ThemeData + StatusColors ThemeExtension, text theme
 lib/app/home/home_screen.dart                   H1 home, Attendance card, failure SnackBar
-lib/app/home/home_date.dart                     formatHomeDate(DateTime)
 lib/app/native/attendance_launcher.dart         MethodChannel boundary + AttendanceLaunchException
 assets/fonts/                                   IBM Plex TTFs + OFL.txt
-test/app/home/home_date_test.dart
 test/app/home/home_screen_test.dart
 android/settings.gradle.kts, android/app/build.gradle.kts
 android/app/src/main/AndroidManifest.xml         label, AttendanceActivity
@@ -59,10 +57,10 @@ android/app/src/androidTest/kotlin/com/shafayatb/snapendance/attendance/Attendan
 
 ## Steps (one commit each; stop after each for review)
 
-1. **Home replaces the counter.** Test first: `formatHomeDate(DateTime(2026, 10, 12))` is
-   `"Monday, 12 October"`, plus a year-boundary and single-digit-day case (catches wrong weekday
-   or month indexing). Then `lib/app/` app + Home (default theme), `main.dart`, launcher label,
-   remove the counter, its test, and `cupertino_icons`.
+1. **Home replaces the counter.** `lib/app/` app + Home (default theme), `main.dart`, launcher
+   label; remove the counter, its test, and `cupertino_icons`; add `intl` for the date line. No
+   test-first claim: the step has no app logic of its own (a date test would only test `intl`).
+   Verified by analyze, build, and the step 2 device screenshot.
    `feat(app): replace counter starter with Snapendance home`
 2. **Flutter theme and fonts.** Tokens, `ThemeData`, `StatusColors` extension, bundled fonts, H1
    styling. Pure styling: no test-first claim (a token-equality test would only copy constants);
