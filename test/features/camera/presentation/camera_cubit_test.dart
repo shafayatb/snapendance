@@ -199,6 +199,54 @@ void main() {
     );
 
     blocTest<CameraCubit, CameraState>(
+      'a resume while the camera is opening does not open it a second time',
+      setUp: () {
+        when(() => service.open()).thenAnswer((_) => opened.future);
+      },
+      build: () => CameraCubit(service),
+      act: (cubit) async {
+        final starting = cubit.start();
+        await untilCalled(() => service.open());
+        // On the phone, the resume after the permission dialog can arrive after the answer.
+        final resuming = cubit.appResumed();
+        opened.complete(session);
+        await Future.wait([starting, resuming]);
+      },
+      expect: () => [ready],
+      verify: (_) => verify(() => service.open()).called(1),
+    );
+
+    blocTest<CameraCubit, CameraState>(
+      'an open after leaving and returning waits for the earlier open to finish',
+      setUp: () {
+        final second = MockCameraSession();
+        when(() => second.minZoom).thenReturn(1);
+        when(() => second.maxZoom).thenReturn(8);
+        when(() => second.focusPointSupported).thenReturn(true);
+        when(() => second.close()).thenAnswer((_) async {});
+        final sessions = [opened.future, Future<CameraSession>.value(second)];
+        when(() => service.open()).thenAnswer((_) => sessions.removeAt(0));
+      },
+      build: () => CameraCubit(service),
+      act: (cubit) async {
+        final starting = cubit.start();
+        await untilCalled(() => service.open());
+        await cubit.appPaused();
+        final resuming = cubit.appResumed();
+        await pumpEventQueue();
+        // The camera plugin cannot initialize two cameras at once.
+        verify(() => service.open()).called(1);
+        opened.complete(session);
+        await Future.wait([starting, resuming]);
+      },
+      expect: () => [const CameraState(), ready],
+      verify: (_) {
+        verify(() => service.open()).called(1);
+        verify(() => session.close()).called(1);
+      },
+    );
+
+    blocTest<CameraCubit, CameraState>(
       'closing the screen releases the camera',
       build: () => CameraCubit(service),
       act: (cubit) async {

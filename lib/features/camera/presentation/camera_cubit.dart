@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -26,6 +27,15 @@ class CameraCubit extends Cubit<CameraState> {
   // must not start a second open, which would read "denied" and win.
   bool _awaitingPermissionAnswer = false;
 
+  // Opens run one at a time: the camera plugin cannot initialize two cameras at once. An open
+  // waits for the one before it, which closes its camera when it finds itself overtaken.
+  Future<void>? _opening;
+  // The generation of the open in progress, so a resume during it does not start another.
+  int? _openingGeneration;
+
+  /// The open camera's preview while [CameraState.status] is ready; otherwise null.
+  CameraPreviewSource? get preview => _session;
+
   /// Opens the camera, asking for permission first if Android still allows it.
   Future<void> start() => _open(askForPermission: true);
 
@@ -45,13 +55,36 @@ class CameraCubit extends Cubit<CameraState> {
   /// Back from the background or app settings. Permission is checked, not requested, so a
   /// refusal does not bring the dialog straight back.
   Future<void> appResumed() async {
-    if (_session != null || _awaitingPermissionAnswer) return;
+    if (_session != null ||
+        _awaitingPermissionAnswer ||
+        _openingGeneration == _generation) {
+      return;
+    }
     await _open(askForPermission: false);
   }
 
   Future<void> _open({required bool askForPermission}) async {
     final generation = ++_generation;
     await _releaseSession();
+    final previous = _opening;
+    final done = Completer<void>();
+    _opening = done.future;
+    _openingGeneration = generation;
+    try {
+      await previous;
+      if (generation != _generation || isClosed) return;
+      await _openCamera(generation, askForPermission: askForPermission);
+    } finally {
+      if (_openingGeneration == generation) _openingGeneration = null;
+      if (identical(_opening, done.future)) _opening = null;
+      done.complete();
+    }
+  }
+
+  Future<void> _openCamera(
+    int generation, {
+    required bool askForPermission,
+  }) async {
     var permission = await _service.permission();
     if (permission == CameraPermission.denied && askForPermission) {
       _awaitingPermissionAnswer = true;

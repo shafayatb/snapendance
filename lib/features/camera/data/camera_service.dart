@@ -33,16 +33,19 @@ abstract interface class CameraService {
   Future<CameraSession> open();
 }
 
-/// An open camera. Closed with [close]; no method may be called after that.
-abstract interface class CameraSession {
-  double get minZoom;
-  double get maxZoom;
-  bool get focusPointSupported;
-
+/// What the page needs to draw an open camera's preview.
+abstract interface class CameraPreviewSource {
   /// The preview's width ÷ height as shown in portrait.
   double get previewAspectRatio;
 
   Widget buildPreview();
+}
+
+/// An open camera. Closed with [close]; no method may be called after that.
+abstract interface class CameraSession implements CameraPreviewSource {
+  double get minZoom;
+  double get maxZoom;
+  bool get focusPointSupported;
 
   Future<void> setZoom(double zoom);
 

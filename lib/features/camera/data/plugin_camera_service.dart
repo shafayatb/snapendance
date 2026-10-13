@@ -10,10 +10,13 @@ class PluginCameraService implements CameraService {
   const PluginCameraService();
 
   // Must match the channel name and method in MainActivity.kt.
-  static const _deviceChannel = MethodChannel('com.shafayatb.snapendance/device');
+  static const _deviceChannel = MethodChannel(
+    'com.shafayatb.snapendance/device',
+  );
 
   @override
-  Future<CameraPermission> permission() async => _map(await ph.Permission.camera.status);
+  Future<CameraPermission> permission() async =>
+      _map(await ph.Permission.camera.status);
 
   @override
   Future<CameraPermission> requestPermission() async =>
@@ -54,7 +57,9 @@ class PluginCameraService implements CameraService {
     debugPrint(
       'Cameras: ${cameras.map((c) => '${c.name}/${c.lensDirection.name}/${c.lensType.name}').join(', ')}',
     );
-    final back = cameras.where((c) => c.lensDirection == CameraLensDirection.back);
+    final back = cameras.where(
+      (c) => c.lensDirection == CameraLensDirection.back,
+    );
     if (back.isEmpty) throw const CameraUnavailableException('No back camera');
 
     final controller = CameraController(
@@ -73,6 +78,11 @@ class PluginCameraService implements CameraService {
     } on CameraException catch (error) {
       await controller.dispose();
       throw CameraUnavailableException(error.description ?? error.code);
+    } catch (error) {
+      // The plugin also fails with plain errors (a null check, seen on the A04s when two opens
+      // overlapped); the screen offers Try again instead of waiting forever.
+      await controller.dispose();
+      throw CameraUnavailableException('$error');
     }
   }
 }
@@ -102,11 +112,12 @@ class _PluginCameraSession implements CameraSession {
   Future<void> setZoom(double zoom) => _controller.setZoomLevel(zoom);
 
   @override
-  Future<void> setFlash(CameraFlash flash) => _controller.setFlashMode(switch (flash) {
-    CameraFlash.off => FlashMode.off,
-    CameraFlash.auto => FlashMode.auto,
-    CameraFlash.on => FlashMode.always,
-  });
+  Future<void> setFlash(CameraFlash flash) =>
+      _controller.setFlashMode(switch (flash) {
+        CameraFlash.off => FlashMode.off,
+        CameraFlash.auto => FlashMode.auto,
+        CameraFlash.on => FlashMode.always,
+      });
 
   @override
   Future<void> focusAt(Offset point) async {
