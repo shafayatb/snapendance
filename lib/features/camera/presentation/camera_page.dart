@@ -18,6 +18,7 @@ abstract final class CameraColors {
   static const onCameraVariant = Color(0x99FFFFFF);
   static const primary = Color(0xFF2F66DC);
   static const link = Color(0xFF8AB4F8);
+  static const focus = Color(0xFFFFD54F);
 }
 
 /// `CameraPreviewScreen`: provides [CameraCubit] and starts the camera.
@@ -76,6 +77,25 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     }
   }
 
+  void _showNotice(BuildContext context, CameraNotice notice) {
+    final message = switch (notice.kind) {
+      CameraNoticeKind.flashUnavailable =>
+        'Flash isn’t available on this camera',
+      CameraNoticeKind.focusUnsupported =>
+        'Tap to focus isn’t supported on this camera',
+    };
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: CameraColors.surface,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -86,36 +106,41 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
       ),
       child: Scaffold(
         backgroundColor: CameraColors.background,
-        body: BlocBuilder<CameraCubit, CameraState>(
-          buildWhen: (previous, current) => previous.status != current.status,
-          builder: (context, state) => switch (state.status) {
-            CameraStatus.initializing => const _Initializing(),
-            CameraStatus.ready => const _LiveCamera(),
-            CameraStatus.permissionDenied => const _BlockedState(
-              icon: Icons.no_photography_rounded,
-              title: 'Camera access needed',
-              body:
-                  'Snapendance needs the camera to capture photo batches. '
-                  'Allow camera access to continue.',
-              action: _BlockedAction.allow,
-            ),
-            CameraStatus.permissionPermanentlyDenied => const _BlockedState(
-              icon: Icons.no_photography_rounded,
-              title: 'Camera access needed',
-              body:
-                  'Snapendance needs the camera to capture photo batches. '
-                  'You declined access, so allow it in App settings.',
-              action: _BlockedAction.settings,
-            ),
-            CameraStatus.unavailable => const _BlockedState(
-              icon: Icons.videocam_off_rounded,
-              title: 'Camera unavailable',
-              body:
-                  'The camera couldn’t start. Another app may be using it. '
-                  'Close other camera apps and try again.',
-              action: _BlockedAction.retry,
-            ),
-          },
+        body: BlocListener<CameraCubit, CameraState>(
+          listenWhen: (previous, current) =>
+              current.notice != null && current.notice != previous.notice,
+          listener: (context, state) => _showNotice(context, state.notice!),
+          child: BlocBuilder<CameraCubit, CameraState>(
+            buildWhen: (previous, current) => previous.status != current.status,
+            builder: (context, state) => switch (state.status) {
+              CameraStatus.initializing => const _Initializing(),
+              CameraStatus.ready => const _LiveCamera(),
+              CameraStatus.permissionDenied => const _BlockedState(
+                icon: Icons.no_photography_rounded,
+                title: 'Camera access needed',
+                body:
+                    'Snapendance needs the camera to capture photo batches. '
+                    'Allow camera access to continue.',
+                action: _BlockedAction.allow,
+              ),
+              CameraStatus.permissionPermanentlyDenied => const _BlockedState(
+                icon: Icons.no_photography_rounded,
+                title: 'Camera access needed',
+                body:
+                    'Snapendance needs the camera to capture photo batches. '
+                    'You declined access, so allow it in App settings.',
+                action: _BlockedAction.settings,
+              ),
+              CameraStatus.unavailable => const _BlockedState(
+                icon: Icons.videocam_off_rounded,
+                title: 'Camera unavailable',
+                body:
+                    'The camera couldn’t start. Another app may be using it. '
+                    'Close other camera apps and try again.',
+                action: _BlockedAction.retry,
+              ),
+            },
+          ),
         ),
       ),
     );
@@ -144,7 +169,7 @@ class _Initializing extends StatelessWidget {
   }
 }
 
-/// Preview (C1) with pinch zoom, the zoom slider, and the preset buttons.
+/// Preview (C1) with pinch zoom, tap-to-focus, the zoom slider, and the preset buttons.
 class _LiveCamera extends StatefulWidget {
   const _LiveCamera();
 
@@ -191,47 +216,55 @@ class _LiveCameraState extends State<_LiveCamera> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onScaleStart: _pinchStarted,
-          onScaleUpdate: _pinchUpdated,
-          onScaleEnd: _pinchEnded,
-          child: const _CoverPreview(),
-        ),
-        const _TopBar(),
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 88),
-              child: Center(
-                child: AnimatedOpacity(
-                  opacity: _showReadout ? 1 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: const _ZoomReadout(),
+    return LayoutBuilder(
+      builder: (context, constraints) => Stack(
+        fit: StackFit.expand,
+        children: [
+          // A pinch wins the gesture arena over a tap, so pinching never focuses.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: (details) => context.read<CameraCubit>().tapToFocus(
+              details.localPosition,
+              constraints.biggest,
+            ),
+            onScaleStart: _pinchStarted,
+            onScaleUpdate: _pinchUpdated,
+            onScaleEnd: _pinchEnded,
+            child: const _CoverPreview(),
+          ),
+          const _FocusRing(),
+          const _TopBar(),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 88),
+                child: Center(
+                  child: AnimatedOpacity(
+                    opacity: _showReadout ? 1 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const _ZoomReadout(),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        const Positioned(
-          right: 8,
-          top: 0,
-          bottom: 0,
-          child: Center(child: _ZoomSlider()),
-        ),
-        const Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: _BottomControls(),
-        ),
-      ],
+          const Positioned(
+            right: 8,
+            top: 0,
+            bottom: 0,
+            child: Center(child: _ZoomSlider()),
+          ),
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _BottomControls(),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -251,6 +284,109 @@ class _CoverPreview extends StatelessWidget {
           width: 1000,
           height: 1000 / preview.previewAspectRatio,
           child: preview.buildPreview(),
+        ),
+      ),
+    );
+  }
+}
+
+class _FocusRing extends StatelessWidget {
+  const _FocusRing();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<CameraCubit, CameraState, FocusMarker?>(
+      selector: (state) => state.focusMarker,
+      builder: (context, marker) {
+        if (marker == null) return const SizedBox.shrink();
+        return Positioned(
+          left: marker.position.dx - 40,
+          top: marker.position.dy - 40,
+          // A new key restarts the animation for every tap.
+          child: _AnimatedFocusRing(key: ValueKey(marker.serial)),
+        );
+      },
+    );
+  }
+}
+
+/// C2: scales 1.2 → 1.0 in 150 ms, holds 1.5 s, fades out in 200 ms.
+class _AnimatedFocusRing extends StatefulWidget {
+  const _AnimatedFocusRing({super.key});
+
+  @override
+  State<_AnimatedFocusRing> createState() => _AnimatedFocusRingState();
+}
+
+class _AnimatedFocusRingState extends State<_AnimatedFocusRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1850),
+  )..forward();
+
+  late final Animation<double> _scale = Tween(begin: 1.2, end: 1.0).animate(
+    CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0, 150 / 1850, curve: Curves.easeOut),
+    ),
+  );
+
+  late final Animation<double> _opacity = Tween(begin: 1.0, end: 0.0).animate(
+    CurvedAnimation(parent: _controller, curve: const Interval(1650 / 1850, 1)),
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: FadeTransition(
+        opacity: _opacity,
+        child: ScaleTransition(
+          scale: _scale,
+          child: SizedBox(
+            width: 80,
+            height: 104,
+            child: Column(
+              children: [
+                Container(
+                  key: const ValueKey('focus-ring'),
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: CameraColors.focus, width: 1.5),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: CameraColors.focus,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // "FOCUS", not the design's "FOCUS LOCKED": focus is not locked (deviation C2).
+                const Text(
+                  'FOCUS',
+                  style: TextStyle(
+                    color: CameraColors.focus,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.96,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

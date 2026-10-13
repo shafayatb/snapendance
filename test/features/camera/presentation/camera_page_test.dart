@@ -12,6 +12,11 @@ class MockCameraCubit extends MockCubit<CameraState> implements CameraCubit {}
 void main() {
   late MockCameraCubit cubit;
 
+  setUpAll(() {
+    registerFallbackValue(Offset.zero);
+    registerFallbackValue(Size.zero);
+  });
+
   setUp(() {
     cubit = MockCameraCubit();
     when(() => cubit.retry()).thenAnswer((_) async {});
@@ -152,26 +157,33 @@ void main() {
       expect(zoom, greaterThan(1));
     });
 
-    testWidgets('a pinch zooms relative to where it started', (tester) async {
+    // The Cubit test "pinch scales the zoom it started from" covers the arithmetic.
+    testWidgets('spreading two fingers zooms in, without focusing', (
+      tester,
+    ) async {
       await showReady(tester);
       final center = tester.getCenter(find.byType(CameraView));
 
       final first = await tester.startGesture(center - const Offset(0, 50));
       final second = await tester.startGesture(center + const Offset(0, 50));
-      await tester.pump();
-      await first.moveBy(const Offset(0, -50));
-      await second.moveBy(const Offset(0, 50));
+      for (var step = 0; step < 5; step++) {
+        await first.moveBy(const Offset(0, -20));
+        await second.moveBy(const Offset(0, 20));
+      }
       await tester.pump();
       await first.up();
       await second.up();
-      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
 
       verify(() => cubit.pinchStarted()).called(1);
-      final scale = verify(
+      verifyNever(() => cubit.tapToFocus(any(), any()));
+      final scales = verify(
         () => cubit.pinchUpdated(captureAny()),
-      ).captured.last;
-      expect(scale, closeTo(2, 0.01));
-      await tester.pump(const Duration(seconds: 1));
+      ).captured.cast<double>();
+      expect(scales.last, greaterThan(1.5));
+      for (var i = 1; i < scales.length; i++) {
+        expect(scales[i], greaterThanOrEqualTo(scales[i - 1]));
+      }
     });
 
     testWidgets('the readout shows while pinching and fades after release', (
@@ -211,6 +223,76 @@ void main() {
 
       verifyNever(() => cubit.pinchStarted());
       verifyNever(() => cubit.pinchUpdated(any()));
+    });
+  });
+
+  group('focus', () {
+    const ready = CameraState(
+      status: CameraStatus.ready,
+      minZoom: 1,
+      maxZoom: 8,
+      presets: [1, 2, 5],
+      focusSupported: true,
+    );
+
+    testWidgets('a tap on the preview asks to focus there', (tester) async {
+      await showCamera(tester, CameraStatus.ready, state: ready);
+      final view = tester.getRect(find.byType(CameraView));
+
+      await tester.tapAt(view.topLeft + const Offset(120, 300));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      verify(
+        () => cubit.tapToFocus(const Offset(120, 300), view.size),
+      ).called(1);
+    });
+
+    testWidgets('the ring is centered where the tap landed', (tester) async {
+      await showCamera(
+        tester,
+        CameraStatus.ready,
+        state: ready.copyWith(
+          focusMarker: const FocusMarker(Offset(120, 300), 1),
+        ),
+      );
+
+      expect(find.text('FOCUS'), findsOneWidget);
+      final ring = tester.getRect(find.byKey(const ValueKey('focus-ring')));
+      expect(ring.size, const Size(80, 80));
+      expect(ring.center, const Offset(120, 300));
+
+      // Scales in, holds 1.5 s, fades out in 200 ms.
+      await tester.pump(const Duration(milliseconds: 1600));
+      expect(find.text('FOCUS'), findsOneWidget);
+      await tester.pumpAndSettle();
+      final opacity = tester.widget<FadeTransition>(
+        find
+            .ancestor(
+              of: find.text('FOCUS'),
+              matching: find.byType(FadeTransition),
+            )
+            .first,
+      );
+      expect(opacity.opacity.value, 0);
+    });
+
+    testWidgets('unsupported focus shows a hint', (tester) async {
+      whenListen(
+        cubit,
+        Stream.value(
+          ready.copyWith(
+            notice: const CameraNotice(CameraNoticeKind.focusUnsupported, 1),
+          ),
+        ),
+        initialState: ready,
+      );
+      await showCamera(tester, CameraStatus.ready, state: ready);
+      await tester.pump();
+
+      expect(
+        find.text('Tap to focus isn’t supported on this camera'),
+        findsOneWidget,
+      );
     });
   });
 }
