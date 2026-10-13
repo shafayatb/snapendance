@@ -5,6 +5,7 @@ import 'app/app.dart';
 import 'app/native/attendance_launcher.dart';
 import 'features/camera/data/plugin_camera_service.dart';
 import 'features/uploads/data/capture_files.dart';
+import 'features/uploads/data/connectivity_service.dart';
 import 'features/uploads/data/upload_database.dart';
 import 'features/uploads/data/upload_queue_repository.dart';
 import 'features/uploads/data/upload_scheduler.dart';
@@ -28,6 +29,7 @@ Future<void> main() async {
       cameraService: const PluginCameraService(),
       uploadQueue: uploadQueue,
       uploadScheduler: const WorkmanagerUploadScheduler(),
+      connectivity: const PluginConnectivityService(),
     ),
   );
 }

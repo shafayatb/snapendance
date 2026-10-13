@@ -319,6 +319,18 @@ class UploadQueueRepository {
     return (rows.single['count'] as int) > 0;
   }
 
+  /// Whether the most recent upload attempt failed (plan U11).
+  Future<bool> lastAttemptFailed() async {
+    final rows = await _db.query(
+      'items',
+      columns: ['status'],
+      where: 'last_attempt_at IS NOT NULL',
+      orderBy: 'last_attempt_at DESC, id DESC',
+      limit: 1,
+    );
+    return rows.isNotEmpty && rows.single['status'] != ItemStatus.uploaded.name;
+  }
+
   /// Manual Retry on a Failed item (plan U10): back to pending with a fresh attempt count.
   Future<void> retryItem(int id) async {
     await _db.update(

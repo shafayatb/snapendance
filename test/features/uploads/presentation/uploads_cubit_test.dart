@@ -1,9 +1,12 @@
 import 'dart:io';
 
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:snapendance/features/uploads/data/capture_files.dart';
+import 'package:snapendance/features/uploads/data/connectivity_service.dart';
 import 'package:snapendance/features/uploads/data/sync_engine.dart';
 import 'package:snapendance/features/uploads/data/upload_api.dart';
 import 'package:snapendance/features/uploads/data/upload_database.dart';
@@ -27,6 +30,22 @@ class CountingScheduler implements UploadScheduler {
   Future<void> scheduleUploads() async => scheduled++;
 }
 
+class FakeConnectivity implements ConnectivityService {
+  bool connected = true;
+  final changes = StreamController<bool>.broadcast();
+
+  @override
+  Future<bool> isConnected() async => connected;
+
+  @override
+  Stream<bool> get connectedChanges => changes.stream;
+
+  void set(bool value) {
+    connected = value;
+    changes.add(value);
+  }
+}
+
 class AcceptingApi implements UploadApi {
   @override
   Future<void> upload(UploadItem item) async {}
@@ -39,6 +58,7 @@ void main() {
   late List<UploadItem> first;
   late List<UploadItem> second;
   late CountingScheduler scheduler;
+  late FakeConnectivity connectivity;
 
   setUpAll(sqfliteFfiInit);
 
@@ -66,6 +86,7 @@ void main() {
       CaptureFiles(Directory(p.join(temp.path, 'captures'))),
     );
     scheduler = CountingScheduler();
+    connectivity = FakeConnectivity();
     first = await queueBatch(2);
     second = await queueBatch(1);
   });
@@ -77,7 +98,7 @@ void main() {
 
   blocTest<UploadsCubit, UploadsState>(
     'loads the queued batches from the database, newest first',
-    build: () => UploadsCubit(repository, scheduler),
+    build: () => UploadsCubit(repository, scheduler, connectivity),
     act: (cubit) => cubit.load(),
     verify: (cubit) {
       expect(cubit.state.loaded, isTrue);
@@ -90,7 +111,7 @@ void main() {
 
   blocTest<UploadsCubit, UploadsState>(
     'shows a sync run made elsewhere; finished batches leave the list',
-    build: () => UploadsCubit(repository, scheduler),
+    build: () => UploadsCubit(repository, scheduler, connectivity),
     act: (cubit) async {
       await cubit.load();
       // A run outside the screen, as the background worker makes it.
@@ -105,7 +126,7 @@ void main() {
 
   blocTest<UploadsCubit, UploadsState>(
     'retry puts a failed item back in the queue',
-    build: () => UploadsCubit(repository, scheduler),
+    build: () => UploadsCubit(repository, scheduler, connectivity),
     act: (cubit) async {
       await SyncEngine(repository, RejectingApi()).run();
       await cubit.load();
@@ -122,7 +143,7 @@ void main() {
 
   blocTest<UploadsCubit, UploadsState>(
     'remove drops a missing-file item',
-    build: () => UploadsCubit(repository, scheduler),
+    build: () => UploadsCubit(repository, scheduler, connectivity),
     act: (cubit) async {
       File(second.single.filePath).deleteSync();
       await repository.reconcile();
@@ -138,7 +159,7 @@ void main() {
 
   blocTest<UploadsCubit, UploadsState>(
     'resuming the app reloads',
-    build: () => UploadsCubit(repository, scheduler),
+    build: () => UploadsCubit(repository, scheduler, connectivity),
     act: (cubit) async {
       await cubit.load();
       await SyncEngine(repository, AcceptingApi()).run();
@@ -146,4 +167,40 @@ void main() {
     },
     verify: (cubit) => expect(cubit.state.pending, 0),
   );
+
+  group('connection pill', () {
+    blocTest<UploadsCubit, UploadsState>(
+      'follows connectivity; regaining it asks for a run',
+      build: () => UploadsCubit(repository, scheduler, connectivity),
+      act: (cubit) async {
+        cubit.start();
+        await pumpEventQueue();
+        expect(cubit.state.link, ConnectionLink.stable);
+        connectivity.set(false);
+        await pumpEventQueue();
+        expect(cubit.state.link, ConnectionLink.offline);
+        expect(scheduler.scheduled, 0);
+        connectivity.set(true);
+        await pumpEventQueue();
+      },
+      verify: (cubit) {
+        expect(cubit.state.link, ConnectionLink.stable);
+        expect(scheduler.scheduled, 1);
+      },
+    );
+
+    blocTest<UploadsCubit, UploadsState>(
+      'connected but the last attempt failed reads as uploads failing',
+      build: () => UploadsCubit(repository, scheduler, connectivity),
+      act: (cubit) async {
+        await SyncEngine(repository, RejectingApi()).run();
+        await cubit.load();
+        expect(cubit.state.link, ConnectionLink.failing);
+        await cubit.retry(first.first.id);
+        await SyncEngine(repository, AcceptingApi()).run();
+        await cubit.load();
+      },
+      verify: (cubit) => expect(cubit.state.link, ConnectionLink.stable),
+    );
+  });
 }

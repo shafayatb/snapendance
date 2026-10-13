@@ -2,14 +2,31 @@ import 'package:equatable/equatable.dart';
 
 import '../domain/upload_models.dart';
 
+/// The connection pill (plan U11).
+enum ConnectionLink {
+  /// Connected, and the last attempt did not fail.
+  stable,
+
+  /// No connection; unfinished items wait for one.
+  offline,
+
+  /// Connected, but the most recent upload attempt failed.
+  failing,
+}
+
 /// The Upload Manager (U1-U5): submitted batches that still have unfinished items.
 class UploadsState extends Equatable {
-  const UploadsState({this.loaded = false, this.batches = const []});
+  const UploadsState({
+    this.loaded = false,
+    this.batches = const [],
+    this.link = ConnectionLink.stable,
+  });
 
   final bool loaded;
 
   /// Newest first; a batch leaves the list once every item is uploaded.
   final List<QueuedBatch> batches;
+  final ConnectionLink link;
 
   Iterable<UploadItem> get _items => batches.expand((batch) => batch.items);
 
@@ -27,5 +44,5 @@ class UploadsState extends Equatable {
       _items.where((item) => item.status == status).length;
 
   @override
-  List<Object> get props => [loaded, batches];
+  List<Object> get props => [loaded, batches, link];
 }

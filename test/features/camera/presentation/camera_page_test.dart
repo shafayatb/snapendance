@@ -7,6 +7,7 @@ import 'package:snapendance/features/camera/data/camera_service.dart';
 import 'package:snapendance/features/camera/presentation/camera_cubit.dart';
 import 'package:snapendance/features/camera/presentation/camera_page.dart';
 import 'package:snapendance/features/camera/presentation/camera_state.dart';
+import 'package:snapendance/features/uploads/data/connectivity_service.dart';
 import 'package:snapendance/features/uploads/data/upload_queue_repository.dart';
 import 'package:snapendance/features/uploads/data/upload_scheduler.dart';
 import 'package:snapendance/features/uploads/domain/upload_models.dart';
@@ -21,10 +22,13 @@ class MockUploadQueueRepository extends Mock implements UploadQueueRepository {}
 
 class MockUploadScheduler extends Mock implements UploadScheduler {}
 
+class MockConnectivityService extends Mock implements ConnectivityService {}
+
 void main() {
   late MockCameraCubit cubit;
   late MockBatchCubit batch;
   late MockUploadQueueRepository uploadQueue;
+  late MockConnectivityService connectivity;
 
   setUpAll(() {
     registerFallbackValue(Offset.zero);
@@ -39,6 +43,12 @@ void main() {
     uploadQueue = MockUploadQueueRepository();
     when(() => uploadQueue.changes).thenAnswer((_) => const Stream.empty());
     when(() => uploadQueue.queuedBatches()).thenAnswer((_) async => []);
+    when(() => uploadQueue.lastAttemptFailed()).thenAnswer((_) async => false);
+    connectivity = MockConnectivityService();
+    when(() => connectivity.isConnected()).thenAnswer((_) async => true);
+    when(
+      () => connectivity.connectedChanges,
+    ).thenAnswer((_) => const Stream.empty());
     when(() => batch.state).thenReturn(const BatchState());
     when(() => batch.capture(any())).thenAnswer((_) async {});
     when(() => batch.submit()).thenAnswer((_) async {});
@@ -69,6 +79,7 @@ void main() {
           RepositoryProvider<UploadScheduler>.value(
             value: MockUploadScheduler(),
           ),
+          RepositoryProvider<ConnectivityService>.value(value: connectivity),
         ],
         child: MaterialApp(
           home: Builder(

@@ -44,14 +44,18 @@ void main() {
     when(() => cubit.appResumed()).thenAnswer((_) async {});
   });
 
-  Future<void> show(WidgetTester tester, List<QueuedBatch> batches) async {
+  Future<void> show(
+    WidgetTester tester,
+    List<QueuedBatch> batches, {
+    ConnectionLink link = ConnectionLink.stable,
+  }) async {
     tester.view
       ..physicalSize = const Size(412, 2400)
       ..devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     when(
       () => cubit.state,
-    ).thenReturn(UploadsState(loaded: true, batches: batches));
+    ).thenReturn(UploadsState(loaded: true, batches: batches, link: link));
     await tester.pumpWidget(
       MaterialApp(
         home: BlocProvider<UploadsCubit>.value(
@@ -151,5 +155,36 @@ void main() {
 
     expect(find.text('Nothing waiting to upload'), findsOneWidget);
     expect(find.text('START NEW UPLOAD BATCH'), findsOneWidget);
+  });
+
+  testWidgets('offline: the pill, waiting items, and a paused note', (
+    tester,
+  ) async {
+    await show(tester, [
+      batch([
+        item(ItemStatus.pending),
+        item(ItemStatus.retrying, attempts: 2),
+        item(ItemStatus.uploaded, uploadedAt: today),
+      ]),
+    ], link: ConnectionLink.offline);
+
+    expect(find.text('OFFLINE'), findsOneWidget);
+    expect(find.text('WAITING FOR CONNECTION'), findsNWidgets(2));
+    expect(find.text('Paused until online'), findsOneWidget);
+  });
+
+  testWidgets('connected with failing uploads says so', (tester) async {
+    await show(tester, [
+      batch([item(ItemStatus.retrying, attempts: 1)]),
+    ], link: ConnectionLink.failing);
+
+    expect(find.text('CONNECTED · UPLOADS FAILING'), findsOneWidget);
+    expect(find.text('RETRYING · ATTEMPT 1/5'), findsOneWidget);
+  });
+
+  testWidgets('a working connection reads as a stable link', (tester) async {
+    await show(tester, const []);
+
+    expect(find.text('STABLE LINK'), findsOneWidget);
   });
 }

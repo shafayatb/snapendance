@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../features/camera/data/camera_service.dart';
+import '../features/uploads/data/connectivity_service.dart';
 import '../features/uploads/data/upload_queue_repository.dart';
 import '../features/uploads/data/upload_scheduler.dart';
 import '../features/uploads/presentation/batch_cubit.dart';
@@ -16,12 +17,14 @@ class SnapendanceApp extends StatelessWidget {
     required this.cameraService,
     required this.uploadQueue,
     required this.uploadScheduler,
+    required this.connectivity,
   });
 
   final AttendanceLauncher attendanceLauncher;
   final CameraService cameraService;
   final UploadQueueRepository uploadQueue;
   final UploadScheduler uploadScheduler;
+  final ConnectivityService connectivity;
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +33,7 @@ class SnapendanceApp extends StatelessWidget {
       providers: [
         RepositoryProvider.value(value: uploadQueue),
         RepositoryProvider.value(value: uploadScheduler),
+        RepositoryProvider.value(value: connectivity),
       ],
       child: BlocProvider(
         create: (_) => BatchCubit(uploadQueue, uploadScheduler)..appResumed(),

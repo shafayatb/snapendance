@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_tokens.dart';
 import '../../../app/widgets/dashed_border.dart';
+import '../data/connectivity_service.dart';
 import '../data/upload_queue_repository.dart';
 import '../data/upload_scheduler.dart';
 import '../domain/upload_models.dart';
@@ -26,6 +27,7 @@ class UploadManagerPage extends StatelessWidget {
       create: (context) => UploadsCubit(
         context.read<UploadQueueRepository>(),
         context.read<UploadScheduler>(),
+        context.read<ConnectivityService>(),
       )..start(),
       child: const UploadManagerView(),
     );
@@ -96,8 +98,20 @@ class _UploadManagerViewState extends State<UploadManagerView>
                     if (!state.loaded) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    if (state.batches.isEmpty) return const _EmptyState();
-                    return _UploadList(state: state);
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                          child: _ConnectionPill(link: state.link),
+                        ),
+                        Expanded(
+                          child: state.batches.isEmpty
+                              ? const _EmptyState()
+                              : _UploadList(state: state),
+                        ),
+                      ],
+                    );
                   },
                 ),
               ),
@@ -105,6 +119,61 @@ class _UploadManagerViewState extends State<UploadManagerView>
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ConnectionPill extends StatelessWidget {
+  const _ConnectionPill({required this.link});
+
+  final ConnectionLink link;
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, background, icon, label) = switch (link) {
+      ConnectionLink.stable => (
+        AppStatusColors.synced,
+        AppStatusColors.syncedContainer,
+        Icons.wifi_rounded,
+        'STABLE LINK',
+      ),
+      ConnectionLink.offline => (
+        AppStatusColors.failed,
+        AppStatusColors.failedContainer,
+        Icons.cloud_off_rounded,
+        'OFFLINE',
+      ),
+      ConnectionLink.failing => (
+        AppStatusColors.pending,
+        AppStatusColors.pendingContainer,
+        Icons.sync_problem_rounded,
+        'CONNECTED · UPLOADS FAILING',
+      ),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.04,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -186,7 +255,10 @@ class _UploadList extends StatelessWidget {
         _BatchEntry(:final batch) => _BatchHeader(batch: batch),
         _ItemEntry(:final item) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: _ItemRow(item: item),
+          child: _ItemRow(
+            item: item,
+            offline: state.link == ConnectionLink.offline,
+          ),
         ),
         _MoreSyncedEntry(:final count) => Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
@@ -209,6 +281,7 @@ class _ProgressCard extends StatelessWidget {
   final UploadsState state;
 
   String get _note {
+    if (state.link == ConnectionLink.offline) return 'Paused until online';
     final uploading = state.count(ItemStatus.uploading);
     if (uploading > 0) {
       return 'Uploading $uploading ${uploading == 1 ? 'photo' : 'photos'}';
@@ -377,7 +450,15 @@ String _size(int bytes) {
 }
 
 /// The status line's color, icon, and label (U1-U3, with deviations U3).
-(Color, IconData, String) _status(UploadItem item) => switch (item.status) {
+(Color, IconData, String) _status(
+  UploadItem item, {
+  required bool offline,
+}) => switch (item.status) {
+  ItemStatus.pending || ItemStatus.retrying when offline => (
+    AppStatusColors.pending,
+    Icons.wifi_off_rounded,
+    'WAITING FOR CONNECTION',
+  ),
   ItemStatus.pending => (
     AppStatusColors.queued,
     Icons.schedule_rounded,
@@ -409,13 +490,14 @@ String _size(int bytes) {
 };
 
 class _ItemRow extends StatelessWidget {
-  const _ItemRow({required this.item});
+  const _ItemRow({required this.item, required this.offline});
 
   final UploadItem item;
+  final bool offline;
 
   @override
   Widget build(BuildContext context) {
-    final (color, icon, label) = _status(item);
+    final (color, icon, label) = _status(item, offline: offline);
     final cubit = context.read<UploadsCubit>();
     final action = switch (item) {
       UploadItem(fileMissing: true) => ('Remove', () => cubit.remove(item.id)),
