@@ -402,13 +402,20 @@ private fun SetOfficeButton(style: ButtonStyle, onClick: () -> Unit) {
 
 private fun formatCoordinate(value: Double): String = String.format(Locale.ROOT, "%.4f", value)
 
-/** "Today, 08:41 AM", "Yesterday, 08:41 AM", or "12 Oct, 08:41 AM", in the device's 12/24-hour setting. */
+/** "08:41 AM" or "08:41", in the device's 12/24-hour setting. */
 @Composable
-private fun formatSavedTime(epochMillis: Long): String {
+internal fun formatClockTime(epochMillis: Long): String {
     val timePattern = if (DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "hh:mm a"
     // From the configuration, so a locale change recomposes with the new one.
     val locale = LocalConfiguration.current.locales[0]
-    val time = SimpleDateFormat(timePattern, locale).format(Date(epochMillis))
+    return SimpleDateFormat(timePattern, locale).format(Date(epochMillis))
+}
+
+/** "Today, 08:41 AM", "Yesterday, 08:41 AM", or "12 Oct, 08:41 AM", in the device's 12/24-hour setting. */
+@Composable
+internal fun formatSavedTime(epochMillis: Long): String {
+    val locale = LocalConfiguration.current.locales[0]
+    val time = formatClockTime(epochMillis)
     val saved = Calendar.getInstance().apply { timeInMillis = epochMillis }
     val today = Calendar.getInstance()
     val yesterday = (today.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }

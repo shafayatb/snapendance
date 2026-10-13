@@ -132,19 +132,33 @@ fun AttendanceRoot(
             AttendanceEvent.FixStale -> resources.getString(R.string.office_error_stale)
             AttendanceEvent.OfficeSaveFailed -> resources.getString(R.string.office_error_save)
             AttendanceEvent.OfficeLoadFailed -> resources.getString(R.string.office_error_load)
+            // Rounded up like the ring, so 50.2 m never reads as "50 m" here.
+            is AttendanceEvent.MarkOutOfRange -> resources.getString(
+                R.string.mark_error_out_of_range,
+                ceil(event.distanceMeters).toInt(),
+            )
+            AttendanceEvent.MarkNoFix -> resources.getString(R.string.mark_error_no_fix)
+            AttendanceEvent.MarkSaveFailed -> resources.getString(R.string.mark_error_save)
+            AttendanceEvent.AttendanceLoadFailed -> resources.getString(R.string.mark_error_load)
         }
-        // A failed load has nothing to retry; every other message is a failed attempt.
-        val canRetry = event != AttendanceEvent.OfficeLoadFailed
+        // What Retry repeats: a failed load or an out-of-range check has nothing to retry.
+        val retryAction = when (event) {
+            AttendanceEvent.MarkNoFix, AttendanceEvent.MarkSaveFailed ->
+                AttendanceAction.MarkAttendanceClick
+            AttendanceEvent.OfficeLoadFailed, AttendanceEvent.AttendanceLoadFailed,
+            is AttendanceEvent.MarkOutOfRange -> null
+            else -> AttendanceAction.SetOfficeClick
+        }
         scope.launch {
             // The newest message replaces one still on screen instead of queueing behind it.
             snackbarHostState.currentSnackbarData?.dismiss()
             val result = snackbarHostState.showSnackbar(
                 message = message,
-                actionLabel = if (canRetry) resources.getString(R.string.office_retry) else null,
+                actionLabel = retryAction?.let { resources.getString(R.string.office_retry) },
                 duration = SnackbarDuration.Long,
             )
-            if (result == SnackbarResult.ActionPerformed) {
-                viewModel.onAction(AttendanceAction.SetOfficeClick)
+            if (result == SnackbarResult.ActionPerformed && retryAction != null) {
+                viewModel.onAction(retryAction)
             }
         }
     }
@@ -174,8 +188,8 @@ fun AttendanceRoot(
 }
 
 /**
- * Attendance screen (design A1, A2, A6-A8, P2). Task 03 adds the distance ring and Mark
- * Attendance. [onRecoveryClick] carries out the recovery of the blocker shown.
+ * Attendance screen (design A1-A9, P2): office card, distance ring or location blocker, and
+ * the Mark Attendance card. [onRecoveryClick] carries out the recovery of the blocker shown.
  */
 @Composable
 fun AttendanceScreen(
@@ -212,10 +226,21 @@ fun AttendanceScreen(
                 isBlocked = state.blocker != null,
                 onSetOfficeClick = { onAction(AttendanceAction.SetOfficeClick) },
             )
-            // Plan D7: in the area task 03's distance ring will use.
-            state.blocker?.let { blocker ->
+            // A blocker replaces the ring (task 02 plan D7); the card stays, locked.
+            val blocker = state.blocker
+            if (blocker != null) {
                 LocationIssuePanel(blocker = blocker, onRecoveryClick = { onRecoveryClick(blocker) })
+            } else {
+                DistanceRing(
+                    status = state.distance,
+                    markedAtEpochMillis = state.lastAttendance?.markedAtEpochMillis
+                        ?.takeIf { state.isMarkedToday },
+                )
             }
+            AttendanceCard(
+                state = state,
+                onMarkClick = { onAction(AttendanceAction.MarkAttendanceClick) },
+            )
         }
     }
 
@@ -335,7 +360,7 @@ private fun Context.startSettings(intent: Intent) {
 private fun AttendanceScreenPreview() {
     AttendanceTheme {
         AttendanceScreen(
-            state = AttendanceUiState(isOfficeLoaded = true),
+            state = AttendanceUiState(isOfficeLoaded = true, isAttendanceLoaded = true),
             onAction = {},
             onRecoveryClick = {},
             onNavigateBack = {},

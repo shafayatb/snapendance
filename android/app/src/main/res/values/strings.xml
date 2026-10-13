@@ -53,4 +53,38 @@
     <string name="office_error_stale">Only an old GPS fix was available. Try again.</string>
     <string name="office_error_save">Couldn\'t save the office location.</string>
     <string name="office_error_load">Couldn\'t load the saved office location.</string>
+
+    <!-- Mark Attendance (task 03) -->
+    <string name="mark_error_out_of_range">You\'re %1$d m from the office. Move within 50 m to mark attendance. Nothing was recorded.</string>
+    <string name="mark_error_no_fix">Couldn\'t confirm your location with an accurate GPS fix. Nothing was recorded.</string>
+    <string name="mark_error_save">Couldn\'t save your attendance on this device.</string>
+    <string name="ring_unit_no_office">NO OFFICE SAVED</string>
+    <string name="ring_unit_locating">LOCATING</string>
+    <string name="ring_unit_unavailable">NO GPS</string>
+    <string name="ring_unit_away">AWAY</string>
+    <string name="ring_unit_accuracy">±%1$d m ACCURACY</string>
+    <string name="ring_unit_accuracy_unknown">ACCURACY UNKNOWN</string>
+    <string name="ring_chip_no_office">OFFICE NOT SET</string>
+    <string name="ring_chip_locating">GETTING GPS FIX</string>
+    <string name="ring_chip_unavailable">LOCATION UNAVAILABLE</string>
+    <string name="ring_chip_weak">WEAK GPS SIGNAL</string>
+    <string name="ring_chip_out_of_range">OUT OF RANGE</string>
+    <string name="ring_chip_in_range">IN RANGE</string>
+    <string name="ring_chip_marked">MARKED %1$s</string>
+    <string name="ring_helper_no_office">Your live distance to the office appears here once it is saved.</string>
+    <string name="ring_helper_locating">Distance updates as soon as a fix is available.</string>
+    <string name="ring_helper_unavailable">Couldn\'t start location updates. Leave and reopen this screen to try again.</string>
+    <string name="ring_helper_weak_stale">Location hasn\'t updated in the last 30 seconds. Check-in unlocks once a fresh, accurate fix arrives. Try moving near a window.</string>
+    <string name="ring_helper_weak_inaccurate">GPS accuracy is too low for a 50 m check. Check-in unlocks once a fresh, accurate fix arrives. Try moving near a window.</string>
+    <string name="ring_helper_out_of_range">Move within 50 meters of the saved office location to enable check-in.</string>
+    <string name="ring_helper_in_range">You are inside the 50 m radius. Mark Attendance is available.</string>
+    <string name="ring_helper_marked">Distance keeps updating while this screen is open.</string>
+    <string name="card_mark_button">Mark Attendance</string>
+    <string name="card_checking">Checking location…</string>
+    <string name="card_last_marked">Last marked: %1$s</string>
+    <string name="card_never_marked">NO ATTENDANCE MARKED YET</string>
+    <string name="card_marked_title">Attendance marked</string>
+    <string name="card_marked_detail">%1$s · %2$d m from office</string>
+    <string name="card_marked_saved">Saved on this device</string>
+    <string name="mark_error_load">Couldn\'t load your last attendance record.</string>
 </resources>

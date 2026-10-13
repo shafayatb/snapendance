@@ -1,5 +1,6 @@
 package com.shafayatb.snapendance.attendance.ui
 
+import com.shafayatb.snapendance.attendance.marking.AttendanceRecord
 import com.shafayatb.snapendance.attendance.office.SavedOffice
 
 /** Everything the attendance screen shows. */
@@ -17,7 +18,47 @@ data class AttendanceUiState(
     val isReplaceConfirmationVisible: Boolean = false,
     /** Why location cannot be used right now (design A6-A8); Set Office Location is disabled. */
     val blocker: LocationBlocker? = null,
-)
+    /** What the distance ring shows (A1-A4, A9). */
+    val distance: DistanceStatus = DistanceStatus.NoOffice,
+    /** The last attendance record, or null when none is saved (or it could not be read). */
+    val lastAttendance: AttendanceRecord? = null,
+    /** False until the record's first read finishes; marking waits for it. */
+    val isAttendanceLoaded: Boolean = false,
+    /** [lastAttendance] is from today (device time zone); one mark per day (plan D6). */
+    val isMarkedToday: Boolean = false,
+    /** Mark Attendance was tapped and is waiting for a fresh fix to re-check the distance. */
+    val isCheckingAttendance: Boolean = false,
+) {
+    /** Mark Attendance is enabled: in range on a usable fix, and not marked today. */
+    val canMarkAttendance: Boolean
+        get() = distance is DistanceStatus.InRange && blocker == null && fixAttempt == null &&
+            isAttendanceLoaded && !isMarkedToday && !isCheckingAttendance
+}
+
+/** The live distance to the saved office. Distances are unrounded meters. */
+sealed interface DistanceStatus {
+    data object NoOffice : DistanceStatus
+
+    /** Waiting for the first fix, or a Set Office Location attempt is running. */
+    data object Locating : DistanceStatus
+
+    /** Location updates could not start (for example, no Play services). */
+    data object Unavailable : DistanceStatus
+
+    /**
+     * The latest fix is too old or too inaccurate to check attendance (A9). [accuracyMeters] is
+     * null when the fix reported none.
+     */
+    data class Weak(
+        val distanceMeters: Double,
+        val accuracyMeters: Float?,
+        val isStale: Boolean,
+    ) : DistanceStatus
+
+    data class OutOfRange(val distanceMeters: Double) : DistanceStatus
+
+    data class InRange(val distanceMeters: Double) : DistanceStatus
+}
 
 /** Something the user must fix before the screen can use location. */
 sealed interface LocationBlocker {
@@ -72,8 +113,10 @@ sealed interface AttendanceAction {
         val shouldShowRationale: Boolean,
     ) : AttendanceAction
 
-    /** The screen reached `ON_STOP`; location is foreground-only, so a running attempt stops. */
+    /** The screen reached `ON_STOP`; location is foreground-only, so updates and attempts stop. */
     data object ScreenStopped : AttendanceAction
+
+    data object MarkAttendanceClick : AttendanceAction
 }
 
 /**
@@ -98,4 +141,13 @@ sealed interface AttendanceEvent {
 
     data object OfficeSaveFailed : AttendanceEvent
     data object OfficeLoadFailed : AttendanceEvent
+
+    /** The fresh fix taken after the tap was [distanceMeters] away, beyond 50 m. */
+    data class MarkOutOfRange(val distanceMeters: Double) : AttendanceEvent
+
+    /** No usable fix arrived to confirm the distance. */
+    data object MarkNoFix : AttendanceEvent
+
+    data object MarkSaveFailed : AttendanceEvent
+    data object AttendanceLoadFailed : AttendanceEvent
 }
