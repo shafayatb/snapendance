@@ -649,3 +649,72 @@ Each step then started from a fresh session or after a commit:
   recovery variants, saved office under a blocker, replace dialog, loading panel).
 - **Git:** `feature/02-attendance-office-setup`, one commit per step (`841a3a0`..`8ebf9f1`, plus
   this records step), all committed by the user; merge into `develop` is the user's.
+
+## 2026-10-14 · Task 03: attendance live distance and marking (Claude Code)
+
+### Task 03: live distance and Mark Attendance · Essential
+
+> run @FRESH_PROMPT.md
+
+`develop` had been fast-forwarded to the task 02 branch instead of merged with `--no-ff`; asked:
+
+> Accept it as is, start task 03
+
+The plan (`docs/plans/2026-10-14-03-attendance-distance-marking.md`, D1-D10) was approved with:
+
+> Approved, one mark per day, start step 1
+
+Asked whether the remaining work fits the deadline (now 8 pm on 2026-10-14, not the next day):
+
+> What do you think? Can this project be completed by 8pm tomorrow?
+
+> No 14th 8pm
+
+The estimate (20-28 h for tasks 03-11 against about 19 h left) led to a triaged plan: no
+per-step checkpoints, tasks 04-06 and 07-10 merged, one review at the end. The user then
+authorized agent commits and merges:
+
+> I want you to commit, merge etc. There is no time to review things for now
+
+> Why is there codex hooks? remove them
+
+The untracked `.codex/` folder (a Codex copy of the project hooks) was deleted. The user made
+`.claude/hooks/git_guard.py` a no-op for now; that change stays uncommitted.
+
+- **Approach:** native Kotlin/Compose, test first. A pure `AttendanceEligibility` (office, precise
+  permission, location on, the task 02 fix policy, unrounded distance ≤ 50.0 m) with an injected
+  `DistanceCalculator` (`Location.distanceBetween` in the app, a flat fake in tests). The
+  ViewModel tracks fixes while the screen is resumed and an office is saved, holding one location
+  request (paused during a Set Office attempt). A timer re-checks when the latest fix turns 30 s
+  old. Mark Attendance waits up to 10 s for a usable fix taken after the tap, re-checks, then saves
+  `{time, distance}` in a second DataStore file. One mark per calendar day (D6).
+- **Changed from the plan:** D8's broadcast receiver was dropped for time. Instead, the 30 s stale
+  check also re-reads the location setting, so turning it off from the shade shows A8 within about
+  30 s. Steps 4-5 and 6-7 were merged.
+- **Test-first evidence** (JVM, `testDebugUnitTest`, 84 tests at the end):
+  - Eligibility (12): 9 failed on an everything-in-range placeholder; changing `<=` to `<` failed
+    the two exactly-50 m tests (restored).
+  - Attendance store (3): read-back and corrupt-file tests failed on a placeholder store.
+  - ViewModel distance and marking (23): 18 failed on a ViewModel without tracking; the other 5
+    are "nothing happens" cases. Removing the "fix taken after the tap" rule failed
+    `aFixTakenBeforeTheTapIsNotUsed` (restored). Three task 02 tests that expected no location
+    request after a save or under the replace dialog were updated: tracking now holds one.
+  - Distance format (6): 5 failed on a truncating placeholder (50.01 m must read "51m").
+- **Device run** (manual; debug APK; emulator Pixel AVD with Play services, test providers fed once
+  a second from the shell, synthetic coordinates): A1 on a fresh install; office set at ±5 m and
+  tracking took over at "0m IN RANGE"; 120 m showed "121m" red with a partial arc (A3); 48 m showed
+  "49m" green and enabled (A4); with the button enabled, tap, then a 60 m fix: "You're 60 m from
+  the office… Nothing was recorded." and the card locked; at 30 m a tap showed "Checking
+  location…" and then the A5 confirmation and "MARKED 12:34 AM" chip; no fixes for 34 s showed the
+  dotted amber "~31m" (A9); Home removed the GPS request (`dumpsys location`: `-registration`,
+  `ProviderRequest[OFF]`) and returning re-added it; force-stop and reopen still showed the mark;
+  location turned off on screen showed the A8 blocker after the stale check. Test providers and the
+  shell's mock-location app-op were reset afterwards.
+- **Not verified:** the physical walk test on the phone (the user was away from the computer), the
+  10 s no-fix and storage-error messages on a device (JVM tests only), font scaling.
+- **Task review:** not run, by the user's triage; one review is planned at the end of the project.
+- **Checks:** `testDebugUnitTest` 84/84, `lintDebug` 0 errors (the 7 known warnings),
+  `assembleDebug`, `git diff --check` clean.
+- **Git:** `feature/03-attendance-distance-marking`, commits `861b1ea`, `12dbae4`, `5abe243`,
+  `0f13f0c`, and this records commit, made by the agent with the user's authorization; merged into
+  `develop` with `--no-ff` by the agent.

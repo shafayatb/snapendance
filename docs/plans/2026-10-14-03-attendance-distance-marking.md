@@ -2,7 +2,8 @@
 
 **Task:** [03-attendance-distance-marking](../tasks/03-attendance-distance-marking.md) ·
 **Branch:** `feature/03-attendance-distance-marking` (from `develop` at `e213268`) ·
-**Status:** approved 2026-10-14 (D6: one mark per calendar day)
+**Status:** approved 2026-10-14 (D6: one mark per calendar day); done 2026-10-14 in triaged mode
+(D8 dropped, steps 4-5 and 6-7 merged, no task review)
 
 ## Current state (inspected 2026-10-14)
 
@@ -95,6 +96,16 @@ src/test/.../attendance/                           AttendanceEligibilityTest,
    changes one, design deviations (A9 helper without age, A5 chip, unavailable state), backlog
    status, review agent, `docs/agent-log.md`, `FRESH_PROMPT.md`.
    `docs(tasks): record task 03 verification`
+
+### As built (2026-10-14)
+
+After step 1 the user set a 20:00 deadline for the whole project and switched to triaged mode.
+D8's broadcast receiver was dropped: the 30 s stale check re-reads the location setting, so
+location turned off from the shade shows A8 within about 30 s (deferred improvement). Steps 4-5
+were one commit (`feat(attendance): track the live distance and mark attendance after a re-check`)
+and steps 6-7 another (`feat(attendance): show the live distance ring and the Mark Attendance
+card`). The emulator run used test providers instead of a recorded route; the phone walk test
+was not run.
 
 ## Verification
 
