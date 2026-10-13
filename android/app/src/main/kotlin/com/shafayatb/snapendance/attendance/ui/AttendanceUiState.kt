@@ -52,6 +52,9 @@ sealed interface AttendanceAction {
     data object ReplaceOfficeConfirm : AttendanceAction
     data object ReplaceOfficeDismiss : AttendanceAction
 
+    /** A6 or A7's recovery button, while the system still shows the permission dialog. */
+    data object AllowLocationClick : AttendanceAction
+
     /**
      * The screen reached `ON_RESUME` holding [permission]; services are re-checked too. Also sent
      * when A8's recovery finds location already on, since the notification shade does not pause

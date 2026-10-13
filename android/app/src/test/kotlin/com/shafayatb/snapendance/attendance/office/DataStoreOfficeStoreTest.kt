@@ -27,6 +27,7 @@ class DataStoreOfficeStoreTest {
     private fun <T> withStore(block: suspend (OfficeStore) -> T): T = runBlocking {
         val job = Job()
         val dataStore = PreferenceDataStoreFactory.create(
+            corruptionHandler = officeCorruptionHandler,
             scope = CoroutineScope(Dispatchers.IO + job),
             produceFile = { file },
         )
@@ -37,15 +38,15 @@ class DataStoreOfficeStoreTest {
         }
     }
 
+    private val office = SavedOffice(
+        latitude = 23.793712,
+        longitude = 90.406591,
+        accuracyMeters = 6.5f,
+        savedAtEpochMillis = 1_791_870_060_000L,
+    )
+
     @Test
     fun savedOfficeReadsBackFromANewStoreInstance() {
-        val office = SavedOffice(
-            latitude = 23.793712,
-            longitude = 90.406591,
-            accuracyMeters = 6.5f,
-            savedAtEpochMillis = 1_791_870_060_000L,
-        )
-
         withStore { it.save(office) }
 
         assertEquals(office, withStore { it.office.first() })
@@ -54,5 +55,15 @@ class DataStoreOfficeStoreTest {
     @Test
     fun emptyFileReadsAsNoOffice() {
         assertNull(withStore { it.office.first() })
+    }
+
+    @Test
+    fun corruptFileReadsAsNoOfficeAndCanBeSavedOver() {
+        // Without recovery every read and save would fail until the user cleared app data.
+        file.writeText("not a preferences file")
+
+        assertNull(withStore { it.office.first() })
+        withStore { it.save(office) }
+        assertEquals(office, withStore { it.office.first() })
     }
 }

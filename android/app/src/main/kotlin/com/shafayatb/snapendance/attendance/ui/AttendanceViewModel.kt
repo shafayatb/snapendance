@@ -56,9 +56,14 @@ class AttendanceViewModel(
     // blocker's recovery button does not start one.
     private var setOfficeAfterPermission = false
 
+    // A permission dialog is open. The system answers a second request at that point with an empty
+    // result and drops the real answer, so no second one is sent until the first is answered.
+    private var permissionRequestPending = false
+
     init {
         viewModelScope.launch {
-            // The store is the source of truth: a newly saved office reaches the screen from here.
+            // The store is the source of truth: a newly saved office normally reaches the screen
+            // from here (save() also sets it, for when this flow ended after a failed read).
             officeStore.office
                 .catch { error ->
                     if (error !is IOException) throw error
@@ -75,9 +80,12 @@ class AttendanceViewModel(
         when (action) {
             AttendanceAction.SetOfficeClick -> onSetOfficeClick()
             AttendanceAction.ReplaceOfficeConfirm -> {
+                // A second confirm can arrive before the dialog leaves the screen.
+                if (!_uiState.value.isReplaceConfirmationVisible) return
                 _uiState.update { it.copy(isReplaceConfirmationVisible = false) }
                 startFixAttempt()
             }
+            AttendanceAction.AllowLocationClick -> requestPermission()
             AttendanceAction.ReplaceOfficeDismiss ->
                 _uiState.update { it.copy(isReplaceConfirmationVisible = false) }
             is AttendanceAction.ScreenResumed -> {
@@ -103,7 +111,7 @@ class AttendanceViewModel(
         when {
             permission != LocationPermission.Precise -> {
                 setOfficeAfterPermission = true
-                viewModelScope.launch { _events.send(AttendanceEvent.RequestLocationPermission) }
+                requestPermission()
             }
             // Replacing cannot be undone, so one tap on the outlined button must not do it.
             _uiState.value.office != null ->
@@ -112,7 +120,14 @@ class AttendanceViewModel(
         }
     }
 
+    private fun requestPermission() {
+        if (permissionRequestPending) return
+        permissionRequestPending = true
+        viewModelScope.launch { _events.send(AttendanceEvent.RequestLocationPermission) }
+    }
+
     private fun onPermissionResult(result: AttendanceAction.PermissionResult) {
+        permissionRequestPending = false
         permission = result.permission
         refusal = if (permission == LocationPermission.Precise) {
             null
@@ -141,6 +156,7 @@ class AttendanceViewModel(
     }
 
     private fun startFixAttempt() {
+        if (fixJob?.isActive == true) return
         if (!locationSource.isLocationEnabled()) {
             _uiState.update { it.copy(blocker = LocationBlocker.LocationServicesOff) }
             return
@@ -214,6 +230,8 @@ class AttendanceViewModel(
     private suspend fun save(office: SavedOffice) {
         try {
             officeStore.save(office)
+            // Normally the store's flow shows it too, but that flow ends after a failed read.
+            _uiState.update { it.copy(office = office) }
         } catch (error: IOException) {
             _events.send(AttendanceEvent.OfficeSaveFailed)
         }

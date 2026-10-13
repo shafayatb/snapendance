@@ -112,6 +112,18 @@ class AttendanceViewModelTest {
     }
 
     @Test
+    fun officeSavedAfterAFailedReadIsShown() = runTest {
+        store.readFailure = IOException("corrupt file")
+        val viewModel = viewModel()
+
+        // The failed read must not leave the button disabled or the screen showing no office.
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+        source.send(fix(accuracyMeters = 6f))
+
+        assertEquals(SavedOffice(23.8103, 90.4125, 6f, nowEpochMillis), viewModel.uiState.value.office)
+    }
+
+    @Test
     fun acceptedFixIsSavedAndShownAndUpdatesStop() = runTest {
         val viewModel = viewModel()
 
@@ -242,6 +254,18 @@ class AttendanceViewModelTest {
     }
 
     @Test
+    fun confirmingReplaceTwiceStartsOneRequest() = runTest {
+        store = FakeOfficeStore(savedOffice)
+        val viewModel = viewModel()
+
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+        viewModel.onAction(AttendanceAction.ReplaceOfficeConfirm)
+        viewModel.onAction(AttendanceAction.ReplaceOfficeConfirm)
+
+        assertEquals(1, source.activeRequests)
+    }
+
+    @Test
     fun dismissingReplaceKeepsTheSavedOffice() = runTest {
         store = FakeOfficeStore(savedOffice)
         val viewModel = viewModel()
@@ -282,6 +306,36 @@ class AttendanceViewModelTest {
 
         assertEquals(23.8103, store.savedOffice?.latitude)
         assertNull(viewModel.uiState.value.blocker)
+    }
+
+    @Test
+    fun secondTapWhileThePermissionDialogIsOpenDoesNotAskAgain() = runTest {
+        val viewModel = viewModel(LocationPermission.None)
+        val events = eventsOf(viewModel)
+
+        // A second request while one is open gets an empty answer and loses the real one.
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+        assertEquals(listOf(AttendanceEvent.RequestLocationPermission), events)
+
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.Precise, false))
+        assertEquals(1, source.activeRequests)
+    }
+
+    @Test
+    fun allowLocationAsksOnceUntilTheDialogAnswers() = runTest {
+        val viewModel = viewModel(LocationPermission.None)
+        val events = eventsOf(viewModel)
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.None, true))
+
+        viewModel.onAction(AttendanceAction.AllowLocationClick)
+        viewModel.onAction(AttendanceAction.AllowLocationClick)
+        assertEquals(2, events.count { it == AttendanceEvent.RequestLocationPermission })
+
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.None, true))
+        viewModel.onAction(AttendanceAction.AllowLocationClick)
+        assertEquals(3, events.count { it == AttendanceEvent.RequestLocationPermission })
     }
 
     @Test

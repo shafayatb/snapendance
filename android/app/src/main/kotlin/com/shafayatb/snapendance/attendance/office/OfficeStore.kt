@@ -2,9 +2,11 @@ package com.shafayatb.snapendance.attendance.office
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -23,8 +25,17 @@ interface OfficeStore {
     suspend fun save(office: SavedOffice)
 }
 
+/**
+ * A corrupt file is replaced by an empty one (no office saved). Without it, every read and save
+ * fails until the user clears the app's data.
+ */
+internal val officeCorruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }
+
 /** The app's one office-location DataStore (the delegate keeps it to one instance per process). */
-val Context.officeDataStore: DataStore<Preferences> by preferencesDataStore(name = "office_location")
+val Context.officeDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "office_location",
+    corruptionHandler = officeCorruptionHandler,
+)
 
 class DataStoreOfficeStore(private val dataStore: DataStore<Preferences>) : OfficeStore {
     override val office: Flow<SavedOffice?> = dataStore.data.map { prefs ->

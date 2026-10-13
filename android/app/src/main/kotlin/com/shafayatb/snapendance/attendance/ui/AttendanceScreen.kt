@@ -153,10 +153,16 @@ fun AttendanceRoot(
         onAction = viewModel::onAction,
         onRecoveryClick = { blocker ->
             when (blocker) {
-                is LocationBlocker.PermissionDenied ->
-                    if (blocker.canAskAgain) requestPermission() else context.openAppSettings()
-                is LocationBlocker.ApproximateOnly ->
-                    if (blocker.canAskAgain) requestPermission() else context.openAppSettings()
+                is LocationBlocker.PermissionDenied -> if (blocker.canAskAgain) {
+                    viewModel.onAction(AttendanceAction.AllowLocationClick)
+                } else {
+                    context.openAppSettings()
+                }
+                is LocationBlocker.ApproximateOnly -> if (blocker.canAskAgain) {
+                    viewModel.onAction(AttendanceAction.AllowLocationClick)
+                } else {
+                    context.openAppSettings()
+                }
                 LocationBlocker.LocationServicesOff ->
                     activity?.turnOnLocation(turnOnLocationLauncher, onAlreadyOn = recheckLocation)
             }
