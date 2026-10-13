@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../data/camera_service.dart';
+import '../domain/zoom_presets.dart';
 import 'camera_cubit.dart';
 import 'camera_state.dart';
 
@@ -141,15 +144,94 @@ class _Initializing extends StatelessWidget {
   }
 }
 
-/// Preview (C1).
-class _LiveCamera extends StatelessWidget {
+/// Preview (C1) with pinch zoom, the zoom slider, and the preset buttons.
+class _LiveCamera extends StatefulWidget {
   const _LiveCamera();
 
   @override
+  State<_LiveCamera> createState() => _LiveCameraState();
+}
+
+class _LiveCameraState extends State<_LiveCamera> {
+  bool _pinching = false;
+  // Pinch readout (C3): shown while pinching, faded 500 ms after release.
+  bool _showReadout = false;
+  Timer? _readoutTimer;
+
+  @override
+  void dispose() {
+    _readoutTimer?.cancel();
+    super.dispose();
+  }
+
+  void _pinchStarted(ScaleStartDetails details) {
+    // One finger also starts a scale gesture; only a pinch changes zoom. A second finger
+    // restarts the gesture, so a pinch always starts here with two pointers.
+    if (details.pointerCount < 2) return;
+    context.read<CameraCubit>().pinchStarted();
+    _readoutTimer?.cancel();
+    setState(() {
+      _pinching = true;
+      _showReadout = true;
+    });
+  }
+
+  void _pinchUpdated(ScaleUpdateDetails details) {
+    if (!_pinching || details.pointerCount < 2) return;
+    context.read<CameraCubit>().pinchUpdated(details.scale);
+  }
+
+  void _pinchEnded(ScaleEndDetails details) {
+    if (!_pinching) return;
+    _pinching = false;
+    _readoutTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) setState(() => _showReadout = false);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Stack(
+    return Stack(
       fit: StackFit.expand,
-      children: [_CoverPreview(), _TopBar()],
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onScaleStart: _pinchStarted,
+          onScaleUpdate: _pinchUpdated,
+          onScaleEnd: _pinchEnded,
+          child: const _CoverPreview(),
+        ),
+        const _TopBar(),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 88),
+              child: Center(
+                child: AnimatedOpacity(
+                  opacity: _showReadout ? 1 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const _ZoomReadout(),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const Positioned(
+          right: 8,
+          top: 0,
+          bottom: 0,
+          child: Center(child: _ZoomSlider()),
+        ),
+        const Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: _BottomControls(),
+        ),
+      ],
     );
   }
 }
@@ -234,6 +316,186 @@ class _RoundButton extends StatelessWidget {
       style: IconButton.styleFrom(
         backgroundColor: CameraColors.scrim,
         fixedSize: const Size.square(48),
+      ),
+    );
+  }
+}
+
+class _ZoomReadout extends StatelessWidget {
+  const _ZoomReadout();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<CameraCubit, CameraState, double>(
+      selector: (state) => state.zoom,
+      builder: (context, zoom) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: CameraColors.scrim,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          formatZoom(zoom),
+          style: const TextStyle(
+            color: CameraColors.onCamera,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Vertical slider on the right edge (C1), labeled with the camera's real range.
+class _ZoomSlider extends StatelessWidget {
+  const _ZoomSlider();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<CameraCubit, CameraState>(
+      buildWhen: (previous, current) =>
+          previous.zoom != current.zoom || previous.maxZoom != current.maxZoom,
+      builder: (context, state) {
+        if (state.maxZoom <= state.minZoom) return const SizedBox.shrink();
+        const labelStyle = TextStyle(
+          color: CameraColors.onCamera,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        );
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(formatZoom(state.maxZoom), style: labelStyle),
+            SizedBox(
+              height: 260,
+              width: 48,
+              child: RotatedBox(
+                quarterTurns: 3,
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 4,
+                    activeTrackColor: CameraColors.onCamera,
+                    inactiveTrackColor: CameraColors.onCameraVariant,
+                    thumbColor: CameraColors.onCamera,
+                    overlayColor: const Color(0x29FFFFFF),
+                  ),
+                  child: Semantics(
+                    label: 'Zoom',
+                    child: Slider(
+                      min: state.minZoom,
+                      max: state.maxZoom,
+                      value: state.zoom,
+                      onChanged: context.read<CameraCubit>().setZoom,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Text(formatZoom(state.minZoom), style: labelStyle),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BottomControls extends StatelessWidget {
+  const _BottomControls();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [Color(0x99000000), Color(0x00000000)],
+        ),
+      ),
+      child: const SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 32, 16, 24),
+          child: Center(child: _ZoomPresets()),
+        ),
+      ),
+    );
+  }
+}
+
+/// Rounded zoom buttons (C1, C4). The selected one is white; none is selected between presets.
+class _ZoomPresets extends StatelessWidget {
+  const _ZoomPresets();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<CameraCubit, CameraState>(
+      buildWhen: (previous, current) =>
+          previous.zoom != current.zoom || previous.presets != current.presets,
+      builder: (context, state) {
+        return Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: CameraColors.scrim,
+            borderRadius: BorderRadius.circular(32),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final preset in state.presets)
+                _ZoomPresetButton(
+                  label: formatZoom(preset),
+                  selected: (state.zoom - preset).abs() < 0.05,
+                  onPressed: () => context.read<CameraCubit>().setZoom(preset),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ZoomPresetButton extends StatelessWidget {
+  const _ZoomPresetButton({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Zoom $label',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 48,
+          height: 48,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: selected ? CameraColors.onCamera : Colors.transparent,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? CameraColors.background : CameraColors.onCamera,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
     );
   }
