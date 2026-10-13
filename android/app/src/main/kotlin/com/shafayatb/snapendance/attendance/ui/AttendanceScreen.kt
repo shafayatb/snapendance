@@ -132,19 +132,33 @@ fun AttendanceRoot(
             AttendanceEvent.FixStale -> resources.getString(R.string.office_error_stale)
             AttendanceEvent.OfficeSaveFailed -> resources.getString(R.string.office_error_save)
             AttendanceEvent.OfficeLoadFailed -> resources.getString(R.string.office_error_load)
+            // Rounded up like the ring, so 50.2 m never reads as "50 m" here.
+            is AttendanceEvent.MarkOutOfRange -> resources.getString(
+                R.string.mark_error_out_of_range,
+                ceil(event.distanceMeters).toInt(),
+            )
+            AttendanceEvent.MarkNoFix -> resources.getString(R.string.mark_error_no_fix)
+            AttendanceEvent.MarkSaveFailed -> resources.getString(R.string.mark_error_save)
+            AttendanceEvent.AttendanceLoadFailed -> resources.getString(R.string.mark_error_load)
         }
-        // A failed load has nothing to retry; every other message is a failed attempt.
-        val canRetry = event != AttendanceEvent.OfficeLoadFailed
+        // What Retry repeats: a failed load or an out-of-range check has nothing to retry.
+        val retryAction = when (event) {
+            AttendanceEvent.MarkNoFix, AttendanceEvent.MarkSaveFailed ->
+                AttendanceAction.MarkAttendanceClick
+            AttendanceEvent.OfficeLoadFailed, AttendanceEvent.AttendanceLoadFailed,
+            is AttendanceEvent.MarkOutOfRange -> null
+            else -> AttendanceAction.SetOfficeClick
+        }
         scope.launch {
             // The newest message replaces one still on screen instead of queueing behind it.
             snackbarHostState.currentSnackbarData?.dismiss()
             val result = snackbarHostState.showSnackbar(
                 message = message,
-                actionLabel = if (canRetry) resources.getString(R.string.office_retry) else null,
+                actionLabel = retryAction?.let { resources.getString(R.string.office_retry) },
                 duration = SnackbarDuration.Long,
             )
-            if (result == SnackbarResult.ActionPerformed) {
-                viewModel.onAction(AttendanceAction.SetOfficeClick)
+            if (result == SnackbarResult.ActionPerformed && retryAction != null) {
+                viewModel.onAction(retryAction)
             }
         }
     }

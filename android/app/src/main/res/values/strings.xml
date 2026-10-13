@@ -53,4 +53,10 @@
     <string name="office_error_stale">Only an old GPS fix was available. Try again.</string>
     <string name="office_error_save">Couldn\'t save the office location.</string>
     <string name="office_error_load">Couldn\'t load the saved office location.</string>
+
+    <!-- Mark Attendance (task 03) -->
+    <string name="mark_error_out_of_range">You\'re %1$d m from the office. Move within 50 m to mark attendance. Nothing was recorded.</string>
+    <string name="mark_error_no_fix">Couldn\'t confirm your location with an accurate GPS fix. Nothing was recorded.</string>
+    <string name="mark_error_save">Couldn\'t save your attendance on this device.</string>
+    <string name="mark_error_load">Couldn\'t load your last attendance record.</string>
 </resources>

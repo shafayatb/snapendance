@@ -1,8 +1,11 @@
 package com.shafayatb.snapendance.attendance.ui
 
 import com.shafayatb.snapendance.attendance.location.LocationFix
+import com.shafayatb.snapendance.attendance.marking.AttendanceEligibility
+import com.shafayatb.snapendance.attendance.marking.FlatDistanceCalculator
 import com.shafayatb.snapendance.attendance.office.SavedOffice
 import java.io.IOException
+import java.util.TimeZone
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -54,8 +57,11 @@ class AttendanceViewModelTest {
         AttendanceViewModel(
             locationSource = source,
             officeStore = store,
+            attendanceStore = FakeAttendanceStore(),
+            eligibility = AttendanceEligibility(FlatDistanceCalculator),
             elapsedRealtimeMillis = { nowElapsedRealtime },
             currentTimeMillis = { nowEpochMillis },
+            timeZone = TimeZone.getTimeZone("UTC"),
         ).apply { onAction(AttendanceAction.ScreenResumed(permission)) }
 
     private fun fix(accuracyMeters: Float?, ageMillis: Long = 0L, latitude: Double = 23.8103) =
@@ -124,7 +130,7 @@ class AttendanceViewModelTest {
     }
 
     @Test
-    fun acceptedFixIsSavedAndShownAndUpdatesStop() = runTest {
+    fun acceptedFixIsSavedAndShownAndTrackingTakesOverTheRequest() = runTest {
         val viewModel = viewModel()
 
         viewModel.onAction(AttendanceAction.SetOfficeClick)
@@ -135,7 +141,9 @@ class AttendanceViewModelTest {
         assertEquals(expected, store.savedOffice)
         assertEquals(expected, viewModel.uiState.value.office)
         assertNull(viewModel.uiState.value.fixAttempt)
-        assertEquals(0, source.activeRequests)
+        // The attempt's request ended; live distance tracking (task 03) holds the only one.
+        assertEquals(1, source.activeRequests)
+        assertEquals(DistanceStatus.Locating, viewModel.uiState.value.distance)
     }
 
     @Test
@@ -244,7 +252,9 @@ class AttendanceViewModelTest {
 
         viewModel.onAction(AttendanceAction.SetOfficeClick)
         assertTrue(viewModel.uiState.value.isReplaceConfirmationVisible)
-        assertEquals(0, source.activeRequests)
+        // Only live tracking's request; no attempt until the user confirms.
+        assertNull(viewModel.uiState.value.fixAttempt)
+        assertEquals(1, source.activeRequests)
 
         viewModel.onAction(AttendanceAction.ReplaceOfficeConfirm)
         assertFalse(viewModel.uiState.value.isReplaceConfirmationVisible)
@@ -274,7 +284,7 @@ class AttendanceViewModelTest {
         viewModel.onAction(AttendanceAction.ReplaceOfficeDismiss)
 
         assertFalse(viewModel.uiState.value.isReplaceConfirmationVisible)
-        assertEquals(0, source.activeRequests)
+        assertNull(viewModel.uiState.value.fixAttempt)
         assertEquals(savedOffice, viewModel.uiState.value.office)
     }
 

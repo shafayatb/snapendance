@@ -10,7 +10,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import java.util.TimeZone
+import com.shafayatb.snapendance.attendance.location.AndroidDistanceCalculator
 import com.shafayatb.snapendance.attendance.location.FusedLocationSource
+import com.shafayatb.snapendance.attendance.marking.AttendanceEligibility
+import com.shafayatb.snapendance.attendance.marking.DataStoreAttendanceStore
+import com.shafayatb.snapendance.attendance.marking.attendanceDataStore
 import com.shafayatb.snapendance.attendance.office.DataStoreOfficeStore
 import com.shafayatb.snapendance.attendance.office.officeDataStore
 import com.shafayatb.snapendance.attendance.ui.AttendanceRoot
@@ -29,8 +34,11 @@ class AttendanceActivity : ComponentActivity() {
                 AttendanceViewModel(
                     locationSource = FusedLocationSource(applicationContext),
                     officeStore = DataStoreOfficeStore(applicationContext.officeDataStore),
+                    attendanceStore = DataStoreAttendanceStore(applicationContext.attendanceDataStore),
+                    eligibility = AttendanceEligibility(AndroidDistanceCalculator),
                     elapsedRealtimeMillis = SystemClock::elapsedRealtime,
                     currentTimeMillis = System::currentTimeMillis,
+                    timeZone = TimeZone.getDefault(),
                 )
             }
         }
