@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../app/widgets/dashed_border.dart';
 import '../../uploads/presentation/batch_cubit.dart';
 import '../../uploads/presentation/batch_state.dart';
+import '../../uploads/presentation/simulation_sheet.dart';
 import '../data/camera_service.dart';
 import '../domain/zoom_presets.dart';
 import 'camera_cubit.dart';
@@ -631,6 +632,12 @@ class _TopBar extends StatelessWidget {
                   const _UploadsButton(),
                   const SizedBox(width: 8),
                   const _FlashButton(),
+                  const SizedBox(width: 8),
+                  _RoundButton(
+                    icon: Icons.settings_rounded,
+                    tooltip: 'Upload simulation',
+                    onPressed: () => showSimulationSheet(context),
+                  ),
                 ],
               ],
             ),

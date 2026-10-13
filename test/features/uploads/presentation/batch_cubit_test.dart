@@ -16,6 +16,9 @@ void main() {
   late StreamController<void> changes;
   late OpenBatch open;
   late int pending;
+  late MockScenario scenario;
+
+  setUpAll(() => registerFallbackValue(MockScenario.success));
 
   UploadItem stored(String path) => UploadItem(
     id: 1,
@@ -32,9 +35,16 @@ void main() {
     changes = StreamController<void>.broadcast();
     open = const OpenBatch();
     pending = 0;
+    scenario = MockScenario.success;
     when(() => repository.changes).thenAnswer((_) => changes.stream);
     when(() => repository.openBatch()).thenAnswer((_) async => open);
     when(() => repository.pendingCount()).thenAnswer((_) async => pending);
+    when(() => repository.mockScenario()).thenAnswer((_) async => scenario);
+    when(() => repository.setMockScenario(any())).thenAnswer((
+      invocation,
+    ) async {
+      scenario = invocation.positionalArguments.single as MockScenario;
+    });
     when(() => repository.addCapture(any())).thenAnswer((invocation) async {
       final path = invocation.positionalArguments.single as String;
       open = OpenBatch(count: open.count + 1, lastFilePath: '/stored$path');
@@ -51,15 +61,21 @@ void main() {
   tearDown(() => changes.close());
 
   blocTest<BatchCubit, BatchState>(
-    'load shows the stored open batch and pending count',
+    'load shows the stored open batch, pending count, and mock scenario',
     setUp: () {
       open = const OpenBatch(count: 3, lastFilePath: '/c.jpg');
       pending = 4;
+      scenario = MockScenario.failOnce;
     },
     build: () => BatchCubit(repository),
     act: (cubit) => cubit.load(),
     expect: () => [
-      const BatchState(openCount: 3, lastFilePath: '/c.jpg', pendingCount: 4),
+      const BatchState(
+        openCount: 3,
+        lastFilePath: '/c.jpg',
+        pendingCount: 4,
+        scenario: MockScenario.failOnce,
+      ),
     ],
   );
 
@@ -164,5 +180,13 @@ void main() {
       await pumpEventQueue();
     },
     expect: () => [const BatchState(), const BatchState(pendingCount: 5)],
+  );
+
+  blocTest<BatchCubit, BatchState>(
+    'choosing a mock scenario stores it',
+    build: () => BatchCubit(repository),
+    act: (cubit) => cubit.setScenario(MockScenario.timeout),
+    expect: () => [const BatchState(scenario: MockScenario.timeout)],
+    verify: (_) => expect(scenario, MockScenario.timeout),
   );
 }

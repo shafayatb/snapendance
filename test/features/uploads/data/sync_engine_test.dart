@@ -138,8 +138,9 @@ void main() {
       final items = await queueBatch(3);
       final flaky = items[1].id;
       final api = ScriptedUploadApi((item, call) {
-        if (item.id == flaky && item.attempts == 0)
+        if (item.id == flaky && item.attempts == 0) {
           throw const UploadFailure('Server error');
+        }
       });
 
       await engine(api).run();

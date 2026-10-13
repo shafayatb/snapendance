@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../domain/upload_models.dart';
+
 enum BatchNoticeKind { captureFailed, batchQueued, emptyBatch }
 
 /// A one-off message. [serial] makes a repeated notice a new state.
@@ -24,6 +26,7 @@ class BatchState extends Equatable {
     this.pendingCount = 0,
     this.saving = false,
     this.notice,
+    this.scenario = MockScenario.success,
   });
 
   /// Stored photos in the open batch.
@@ -35,12 +38,16 @@ class BatchState extends Equatable {
   final bool saving;
   final BatchNotice? notice;
 
+  /// How the mock server answers (C11 sheet).
+  final MockScenario scenario;
+
   BatchState copyWith({
     int? openCount,
     String? Function()? lastFilePath,
     int? pendingCount,
     bool? saving,
     BatchNotice? notice,
+    MockScenario? scenario,
   }) {
     return BatchState(
       openCount: openCount ?? this.openCount,
@@ -48,6 +55,7 @@ class BatchState extends Equatable {
       pendingCount: pendingCount ?? this.pendingCount,
       saving: saving ?? this.saving,
       notice: notice ?? this.notice,
+      scenario: scenario ?? this.scenario,
     );
   }
 
@@ -58,5 +66,6 @@ class BatchState extends Equatable {
     pendingCount,
     saving,
     notice,
+    scenario,
   ];
 }

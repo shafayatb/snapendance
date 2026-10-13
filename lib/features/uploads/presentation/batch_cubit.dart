@@ -7,7 +7,7 @@ import '../data/upload_queue_repository.dart';
 import '../domain/upload_models.dart';
 import 'batch_state.dart';
 
-/// The open batch the camera fills, and the pending-upload count (plan U9).
+/// The open batch the camera fills, the pending-upload count, and the mock scenario (plan U9).
 ///
 /// Provided app-wide, so Home and the camera show the same stored counts. The shutter passes the
 /// camera's `takePicture`, so this Cubit and `CameraCubit` do not hold each other.
@@ -52,15 +52,19 @@ class BatchCubit extends Cubit<BatchState> {
     );
   }
 
-  Future<(OpenBatch, int)> _read() async =>
-      (await _repository.openBatch(), await _repository.pendingCount());
+  Future<(OpenBatch, int, MockScenario)> _read() async => (
+    await _repository.openBatch(),
+    await _repository.pendingCount(),
+    await _repository.mockScenario(),
+  );
 
-  BatchState _withStored((OpenBatch, int) stored) {
-    final (open, pending) = stored;
+  BatchState _withStored((OpenBatch, int, MockScenario) stored) {
+    final (open, pending, scenario) = stored;
     return state.copyWith(
       openCount: open.count,
       lastFilePath: () => open.lastFilePath,
       pendingCount: pending,
+      scenario: scenario,
     );
   }
 
@@ -95,6 +99,12 @@ class BatchCubit extends Cubit<BatchState> {
     } finally {
       _submitting = false;
     }
+  }
+
+  /// Stores how the mock server answers the next uploads (C11).
+  Future<void> setScenario(MockScenario scenario) async {
+    await _repository.setMockScenario(scenario);
+    if (!isClosed) emit(state.copyWith(scenario: scenario));
   }
 
   @override

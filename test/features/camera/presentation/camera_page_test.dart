@@ -7,6 +7,7 @@ import 'package:snapendance/features/camera/data/camera_service.dart';
 import 'package:snapendance/features/camera/presentation/camera_cubit.dart';
 import 'package:snapendance/features/camera/presentation/camera_page.dart';
 import 'package:snapendance/features/camera/presentation/camera_state.dart';
+import 'package:snapendance/features/uploads/domain/upload_models.dart';
 import 'package:snapendance/features/uploads/presentation/batch_cubit.dart';
 import 'package:snapendance/features/uploads/presentation/batch_state.dart';
 
@@ -22,6 +23,7 @@ void main() {
     registerFallbackValue(Offset.zero);
     registerFallbackValue(Size.zero);
     registerFallbackValue(() async => '');
+    registerFallbackValue(MockScenario.success);
   });
 
   setUp(() {
@@ -30,6 +32,7 @@ void main() {
     when(() => batch.state).thenReturn(const BatchState());
     when(() => batch.capture(any())).thenAnswer((_) async {});
     when(() => batch.submit()).thenAnswer((_) async {});
+    when(() => batch.setScenario(any())).thenAnswer((_) async {});
     when(() => cubit.retry()).thenAnswer((_) async {});
     when(() => cubit.openAppSettings()).thenAnswer((_) async {});
     when(() => cubit.preview).thenReturn(null);
@@ -499,6 +502,34 @@ void main() {
         find.bySemanticsLabel('Upload Manager, 16 pending'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('settings opens the labeled mock API sheet (C11)', (
+      tester,
+    ) async {
+      await showCamera(
+        tester,
+        CameraStatus.ready,
+        state: ready,
+        batchState: const BatchState(scenario: MockScenario.failOnce),
+      );
+
+      await tester.tap(find.byTooltip('Upload simulation'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Upload simulation'), findsOneWidget);
+      expect(find.text('MOCK API'), findsOneWidget);
+      final selected = tester.widget<RadioGroup<MockScenario>>(
+        find.byType(RadioGroup<MockScenario>),
+      );
+      expect(selected.groupValue, MockScenario.failOnce);
+
+      await tester.tap(find.text('Timeout (slow network)'));
+      verify(() => batch.setScenario(MockScenario.timeout)).called(1);
+
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.text('Upload simulation'), findsNothing);
     });
   });
 }
