@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:snapendance/features/camera/data/camera_service.dart';
 import 'package:snapendance/features/camera/presentation/camera_cubit.dart';
 import 'package:snapendance/features/camera/presentation/camera_page.dart';
 import 'package:snapendance/features/camera/presentation/camera_state.dart';
@@ -293,6 +294,55 @@ void main() {
         find.text('Tap to focus isn’t supported on this camera'),
         findsOneWidget,
       );
+    });
+  });
+
+  group('flash', () {
+    const ready = CameraState(
+      status: CameraStatus.ready,
+      minZoom: 1,
+      maxZoom: 8,
+      presets: [1, 2, 5],
+      flashAvailable: true,
+    );
+
+    testWidgets('the button shows the applied mode and cycles it', (
+      tester,
+    ) async {
+      await showCamera(
+        tester,
+        CameraStatus.ready,
+        state: ready.copyWith(flash: CameraFlash.auto),
+      );
+
+      expect(find.byIcon(Icons.flash_auto_rounded), findsOneWidget);
+      await tester.tap(find.byTooltip('Flash auto'));
+      verify(() => cubit.cycleFlash()).called(1);
+    });
+
+    testWidgets('without a flash unit the button is dimmed but explains', (
+      tester,
+    ) async {
+      await showCamera(
+        tester,
+        CameraStatus.ready,
+        state: ready.copyWith(flashAvailable: false),
+      );
+
+      final button = find.byTooltip('Flash unavailable');
+      final opacity = tester.widget<Opacity>(
+        find.ancestor(of: button, matching: find.byType(Opacity)).first,
+      );
+      expect(opacity.opacity, 0.38);
+      await tester.tap(button);
+      verify(() => cubit.cycleFlash()).called(1);
+    });
+
+    testWidgets('blocked states have no flash button', (tester) async {
+      await showCamera(tester, CameraStatus.permissionDenied);
+
+      expect(find.byTooltip('Flash unavailable'), findsNothing);
+      expect(find.byTooltip('Flash off'), findsNothing);
     });
   });
 }

@@ -233,7 +233,7 @@ class _LiveCameraState extends State<_LiveCamera> {
             child: const _CoverPreview(),
           ),
           const _FocusRing(),
-          const _TopBar(),
+          const _TopBar(showFlash: true),
           Positioned(
             top: 0,
             left: 0,
@@ -394,7 +394,9 @@ class _AnimatedFocusRingState extends State<_AnimatedFocusRing>
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar();
+  const _TopBar({this.showFlash = false});
+
+  final bool showFlash;
 
   @override
   Widget build(BuildContext context) {
@@ -421,11 +423,44 @@ class _TopBar extends StatelessWidget {
                   tooltip: 'Close camera',
                   onPressed: () => Navigator.of(context).maybePop(),
                 ),
+                const Spacer(),
+                if (showFlash) const _FlashButton(),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FlashButton extends StatelessWidget {
+  const _FlashButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<CameraCubit, CameraState>(
+      buildWhen: (previous, current) =>
+          previous.flash != current.flash ||
+          previous.flashAvailable != current.flashAvailable,
+      builder: (context, state) {
+        final (icon, label) = switch (state.flash) {
+          CameraFlash.off => (Icons.flash_off_rounded, 'off'),
+          CameraFlash.auto => (Icons.flash_auto_rounded, 'auto'),
+          CameraFlash.on => (Icons.flash_on_rounded, 'on'),
+        };
+        return Opacity(
+          // Disabled look, but still tappable so it can explain why (C5).
+          opacity: state.flashAvailable ? 1 : 0.38,
+          child: _RoundButton(
+            icon: state.flashAvailable ? icon : Icons.flash_off_rounded,
+            tooltip: state.flashAvailable
+                ? 'Flash $label'
+                : 'Flash unavailable',
+            onPressed: context.read<CameraCubit>().cycleFlash,
+          ),
+        );
+      },
     );
   }
 }
