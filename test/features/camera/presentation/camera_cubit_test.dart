@@ -16,6 +16,7 @@ void main() {
   late MockCameraService service;
   late MockCameraSession session;
   late Completer<CameraSession> opened;
+  late Completer<CameraPermission> permissionAnswer;
 
   setUpAll(() {
     registerFallbackValue(CameraFlash.off);
@@ -26,6 +27,7 @@ void main() {
     service = MockCameraService();
     session = MockCameraSession();
     opened = Completer<CameraSession>();
+    permissionAnswer = Completer<CameraPermission>();
     when(
       () => service.permission(),
     ).thenAnswer((_) async => CameraPermission.granted);
@@ -169,6 +171,31 @@ void main() {
       },
       expect: () => [const CameraState()],
       verify: (_) => verify(() => session.close()).called(1),
+    );
+
+    blocTest<CameraCubit, CameraState>(
+      'the resume after the permission dialog does not overtake the request',
+      setUp: () {
+        when(
+          () => service.permission(),
+        ).thenAnswer((_) async => CameraPermission.denied);
+        when(
+          () => service.requestPermission(),
+        ).thenAnswer((_) => permissionAnswer.future);
+      },
+      build: () => CameraCubit(service),
+      act: (cubit) async {
+        final starting = cubit.start();
+        await untilCalled(() => service.requestPermission());
+        // The dialog paused the activity; it resumes before the answer arrives.
+        await cubit.appResumed();
+        when(
+          () => service.permission(),
+        ).thenAnswer((_) async => CameraPermission.granted);
+        permissionAnswer.complete(CameraPermission.granted);
+        await starting;
+      },
+      expect: () => [ready],
     );
 
     blocTest<CameraCubit, CameraState>(

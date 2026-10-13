@@ -22,6 +22,10 @@ class CameraCubit extends Cubit<CameraState> {
   int _focusSerial = 0;
   double _pinchBase = 1;
 
+  // The permission dialog pauses the app and resumes it before the answer arrives; that resume
+  // must not start a second open, which would read "denied" and win.
+  bool _awaitingPermissionAnswer = false;
+
   /// Opens the camera, asking for permission first if Android still allows it.
   Future<void> start() => _open(askForPermission: true);
 
@@ -41,7 +45,7 @@ class CameraCubit extends Cubit<CameraState> {
   /// Back from the background or app settings. Permission is checked, not requested, so a
   /// refusal does not bring the dialog straight back.
   Future<void> appResumed() async {
-    if (_session != null) return;
+    if (_session != null || _awaitingPermissionAnswer) return;
     await _open(askForPermission: false);
   }
 
@@ -50,7 +54,12 @@ class CameraCubit extends Cubit<CameraState> {
     await _releaseSession();
     var permission = await _service.permission();
     if (permission == CameraPermission.denied && askForPermission) {
-      permission = await _service.requestPermission();
+      _awaitingPermissionAnswer = true;
+      try {
+        permission = await _service.requestPermission();
+      } finally {
+        _awaitingPermissionAnswer = false;
+      }
     }
     if (generation != _generation || isClosed) return;
     switch (permission) {
