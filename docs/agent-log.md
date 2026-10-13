@@ -477,3 +477,60 @@ Conventions:
     - Replacing a visible SnackBar is not tested; it is a small UX choice, not a requirement.
     - `tearDown` keeps both handler resets for clarity.
   - Re-checked with `dart format`, `flutter analyze`, `flutter test`, and `git diff --check`.
+
+### Task 01, step 7: verification and records
+
+> committed, continue with step 7
+
+- **Checked on the step 6 commit:** `dart format`, `flutter analyze` (no issues), `flutter test`
+  (3/3), `flutter build apk --debug`, `./gradlew :app:assembleDebug`,
+  `connectedDebugAndroidTest` (1/1 on the A04s); debug APK reinstalled afterwards.
+- **Device run** (manual): Galaxy A04s (SM-A047F), Android 14, debug APK. Activity stacks read with
+  `dumpsys activity activities` after every action.
+  - Five round trips (arrow, system Back, arrow, system Back, arrow): A1 opened each time; back on
+    Home the task held only `MainActivity` (`sz=1`), the same Activity record every time, so Home
+    was not recreated.
+  - Rapid double taps, five attempts (a one-gesture double tap, two taps fired in parallel from the
+    device shell, and taps about 0.1, 0.2, and 0.35 s apart): each produced exactly one
+    `START ... AttendanceActivity` in logcat, one instance in the task, and one Back returned Home.
+    The second tap never reached the channel, so `singleTop` de-duplication itself was not
+    exercised. Per plan D5 no in-flight guard was added.
+  - Rotation on A1 (auto-rotate forced off, display rotated to landscape and back, settings
+    restored to `accelerometer_rotation=1`, `user_rotation=0`): the top bar survived and stayed
+    clear of the cutout side; the arrow (in landscape) and system Back (after rotating back) each
+    returned to Home. Home also rendered in landscape.
+  - Background/return: Home button, then Recents, on A1 and on Home; each resumed the same
+    screen, and the card still opened A1 afterwards.
+  - System Back on Home finishes the Flutter task (expected; the next launch is a cold start).
+    One tap sent about 2.5 s into a cold debug start did nothing: logcat shows the debug Home
+    took 5.2 s to display, so the tap landed before the first frame. Not a defect.
+  - Logcat: no crash for the app. The app process logged vendor graphics noise
+    (`GraphicBufferAllocator` 4×4 allocation failures) and one `Invalid resource ID 0x00000000`,
+    neither fatal nor investigated. A `FATAL EXCEPTION` from the shell `uiautomator` tool was a
+    clash with the automation service already registered, not the app.
+  - H1 and A1 were captured on the device to check them, then deleted at the developer's request.
+    Submission screenshots come later.
+- **Not seen on a device:** the failure SnackBar (widget tests only) and the Kotlin
+  `result.error("ATTENDANCE_UNAVAILABLE", …)` path (no automated test; reasoned from the code).
+  Android 7-13 system-bar behavior is reasoned from source (steps 2 and 4).
+- **Records:** the `docs/design/README.md` icon deviation row was confirmed against the code and
+  the task 01 fonts/icons item moved from "Still open" to "Resolved" (plan D6/D7). The
+  implementation reference no longer claims built-in Kotlin (`android.builtInKotlin=false`; the
+  Flutter Gradle plugin applies `kotlin-android`) and describes the Compose setup as done, with
+  the Compose ui 1.11.x limit of AGP 9.0.1 / compileSdk 36.
+- **Task review (one read-only agent, whole task 01 diff): approved with minor fixes.** No
+  Critical or Major findings. It confirmed the channel contract and single reply on every path,
+  the Dart error mapping, the Activity configuration, that the tests are meaningful, identical
+  token files and fonts, the Compose BOM limit (from the Gradle cache), that `ui-tooling` and
+  `ui-test-manifest` are left out of release, and the implementation reference edit.
+  - Fixed: `git diff --check develop...HEAD` failed on `assets/fonts/OFL.txt`. The upstream file
+    has CRLF line endings and a trailing space on line 21; earlier checks missed it because the
+    file was untracked then. It is now LF with no trailing space, and the license text is
+    unchanged (`git diff -w --ignore-cr-at-eol` is empty).
+  - Fixed: the backlog still showed task 01 in progress and its decisions as open. Also reworded
+    the `kotlin-android` note in the implementation reference.
+  - Not taken (optional): a "no SnackBar on success" assertion in the success widget test, and
+    the manifest comment that says "same affinity" (both Activities set `taskAffinity=""`; they
+    share a task because the launch has no `NEW_TASK`). Both would change app code in a
+    records-only step; they are left for a later native task.
+  - Re-checked: `git diff --check develop` is clean.
