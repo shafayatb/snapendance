@@ -1,5 +1,23 @@
 # Snapendance Product Reference
 
+## Source-of-truth order
+
+1. Current user instructions and explicitly approved project decisions.
+2. The supplied assessment PDF for required behavior, platforms, reference UI, and deliverables.
+3. This product reference for the extracted requirements and the distinction between brief
+   requirements and proposed choices.
+4. The [UI design](../design/README.md) for appearance and interaction details, including its
+   recorded deviations. It does not override required behavior.
+5. The [task backlog](../tasks/README.md) for task order, scope, and acceptance criteria, then the
+   approved task plan under `docs/plans/`, when it exists.
+6. The implementation, verification, delivery, and Git references.
+7. Existing code and tests as evidence of current behavior, not permission to change the scope.
+
+If a required behavior and an approved design conflict, stop the affected work and report the
+specific conflict. Continue independent authorized work. Do not silently invent a resolution.
+Reference screenshots and the UI design inform appearance; decorative labels and sample data do not
+invent business rules.
+
 ## Brief and current scope
 
 Source: `Task_ Senior App Developer Technical Assessment.pdf` at the project root, reviewed on
@@ -101,6 +119,7 @@ not establish real server delivery, HTTP behavior, or throughput. Record those l
 Do not add authentication, an administration dashboard, a backend, iOS delivery, video recording,
 OCR, analytics, subscriptions, attendance time restrictions, or feature-to-feature data sharing
 without a request. Do not trade away required camera controls or durable retry behavior for polish.
+Do not carry over dates, grading weights, or requirements from other projects.
 
 ## Submission
 

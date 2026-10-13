@@ -31,6 +31,7 @@ responsibility. A repository owns persisted data; a service isolates hardware or
 Pure rules and models should remain independent of Flutter/plugin imports where practical.
 
 Use `flutter_bloc` with `CameraCubit` and `UploadsCubit` as the planned presentation controllers.
+Do not substitute Riverpod, GetX, or another state-management approach.
 Widgets render immutable state and send actions. Use explicit constructors for dependency injection
 and typed boundary failures mapped to user-facing feedback. Compose collects lifecycle-aware
 immutable `StateFlow` state from `AttendanceViewModel` and passes actions to it.
@@ -63,7 +64,7 @@ Verify Back navigation and resources across the native/Flutter transition.
   location-service changes explicitly.
 - Avoid storing one-off snackbar/navigation events as persistent booleans requiring resets.
 - Prefer small composable widgets/functions, immutable models, clear names, and comments explaining
-  decisions. Avoid generated abstractions that make the code harder for the developer to explain.
+  decisions. Avoid generated abstractions that make the code harder to read and explain.
 
 ## Persistence and sync
 
@@ -100,9 +101,9 @@ periodic work only as a documented supplementary recovery mechanism.
 
 ## Dependency and scope discipline
 
-For each new dependency, explain its concrete need, check maintained official documentation and
-toolchain compatibility, and add only what the current task needs. Keep `pubspec.lock` with the
-application. Do not pin versions from memory or install the whole future stack up front.
+Prefer explicit, idiomatic code with a small dependency set. For each new dependency, explain its
+concrete need, check maintained official documentation and toolchain compatibility, and add only
+what the current task needs. Keep `pubspec.lock` with the application. Do not pin versions from memory or install the whole future stack up front.
 
 Avoid service locators, generic BaseRepository/BaseViewModel classes, global mutable singletons,
 giant utility/constants files, one-use wrappers, and code generation solely for style.
