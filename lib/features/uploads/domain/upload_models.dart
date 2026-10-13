@@ -6,6 +6,9 @@ const maxUploadAttempts = 5;
 /// Stored error of an item whose image is no longer on the device.
 const localFileMissingError = 'Local file missing';
 
+/// How the mock server answers (design C11). Stored, so the background worker reads it too.
+enum MockScenario { success, failOnce, timeout, noNetwork, permanentFailure }
+
 /// An open batch collects captures; submitting freezes it as queued (plan U1).
 enum BatchStatus { open, queued }
 

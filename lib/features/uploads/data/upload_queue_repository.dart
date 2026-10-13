@@ -203,6 +203,143 @@ class UploadQueueRepository {
     if (changed) _changes.add(null);
   }
 
+  /// Claims the next item a run may upload (plan U5): a pending or retrying item of a queued
+  /// batch, or one whose earlier claim expired. Returns null when none is left.
+  ///
+  /// The claim is a compare-and-set: two runs may pick the same candidate, but the update
+  /// re-checks it, so only one of them gets it. No transaction stays open during the upload.
+  Future<UploadItem?> claimNext({
+    required String token,
+    required DateTime now,
+    required Duration claimFor,
+    Set<int> exclude = const {},
+  }) async {
+    final nowMs = now.millisecondsSinceEpoch;
+    const claimable =
+        '(i.status IN (?, ?) OR (i.status = ? AND i.claimed_until < ?))';
+    final claimableArgs = [
+      ItemStatus.pending.name,
+      ItemStatus.retrying.name,
+      ItemStatus.uploading.name,
+      nowMs,
+    ];
+    final excluded = exclude.isEmpty
+        ? ''
+        : ' AND i.id NOT IN (${List.filled(exclude.length, '?').join(', ')})';
+    while (true) {
+      final candidates = await _db.rawQuery(
+        'SELECT i.id AS id FROM items i JOIN batches b ON b.id = i.batch_id '
+        'WHERE b.status = ? AND $claimable$excluded ORDER BY i.id LIMIT 1',
+        [BatchStatus.queued.name, ...claimableArgs, ...exclude],
+      );
+      if (candidates.isEmpty) return null;
+      final id = candidates.single['id'] as int;
+      final claimed = await _db.rawUpdate(
+        'UPDATE items SET status = ?, claim_token = ?, claimed_until = ? '
+        'WHERE id = ? AND ${claimable.replaceAll('i.', '')}',
+        [
+          ItemStatus.uploading.name,
+          token,
+          now.add(claimFor).millisecondsSinceEpoch,
+          id,
+          ...claimableArgs,
+        ],
+      );
+      // Another run took it between the read and the update: look again.
+      if (claimed == 0) continue;
+      final rows = await _db.query('items', where: 'id = ?', whereArgs: [id]);
+      _changes.add(null);
+      return _item(rows.single);
+    }
+  }
+
+  /// Records a confirmed upload; ignored if [token] no longer holds the claim.
+  Future<void> recordSuccess(int id, String token, DateTime now) async {
+    await _db.rawUpdate(
+      'UPDATE items SET status = ?, attempts = attempts + 1, uploaded_at = ?, '
+      'last_attempt_at = ?, last_error = NULL, claim_token = NULL, claimed_until = NULL '
+      'WHERE id = ? AND claim_token = ?',
+      [
+        ItemStatus.uploaded.name,
+        now.millisecondsSinceEpoch,
+        now.millisecondsSinceEpoch,
+        id,
+        token,
+      ],
+    );
+    _changes.add(null);
+  }
+
+  /// Records a failed attempt (plan U4): retrying while attempts remain, otherwise failed with
+  /// the last error. Ignored if [token] no longer holds the claim.
+  Future<void> recordFailure(
+    int id,
+    String token,
+    DateTime now,
+    String error, {
+    bool permanent = false,
+  }) async {
+    await _db.rawUpdate(
+      'UPDATE items SET '
+      'status = CASE WHEN ? OR attempts + 1 >= ? THEN ? ELSE ? END, '
+      'last_error = CASE WHEN NOT ? AND attempts + 1 >= ? THEN ? ELSE ? END, '
+      'attempts = attempts + 1, last_attempt_at = ?, '
+      'claim_token = NULL, claimed_until = NULL '
+      'WHERE id = ? AND claim_token = ?',
+      [
+        permanent ? 1 : 0,
+        maxUploadAttempts,
+        ItemStatus.failed.name,
+        ItemStatus.retrying.name,
+        permanent ? 1 : 0,
+        maxUploadAttempts,
+        'Failed after $maxUploadAttempts attempts · last: $error',
+        error,
+        now.millisecondsSinceEpoch,
+        id,
+        token,
+      ],
+    );
+    _changes.add(null);
+  }
+
+  /// Whether a later run has anything to do: items of queued batches still pending, retrying,
+  /// or claimed.
+  Future<bool> hasUnfinishedWork() async {
+    final rows = await _db.rawQuery(
+      'SELECT COUNT(*) AS count FROM items i JOIN batches b ON b.id = i.batch_id '
+      'WHERE b.status = ? AND i.status IN (?, ?, ?)',
+      [
+        BatchStatus.queued.name,
+        ItemStatus.pending.name,
+        ItemStatus.retrying.name,
+        ItemStatus.uploading.name,
+      ],
+    );
+    return (rows.single['count'] as int) > 0;
+  }
+
+  static const _scenarioKey = 'mock_scenario';
+
+  Future<MockScenario> mockScenario() async {
+    final rows = await _db.query(
+      'settings',
+      where: 'key = ?',
+      whereArgs: [_scenarioKey],
+    );
+    if (rows.isEmpty) return MockScenario.success;
+    return MockScenario.values.asNameMap()[rows.single['value']] ??
+        MockScenario.success;
+  }
+
+  Future<void> setMockScenario(MockScenario scenario) async {
+    await _db.insert('settings', {
+      'key': _scenarioKey,
+      'value': scenario.name,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    _changes.add(null);
+  }
+
   UploadItem _item(Map<String, Object?> row) => UploadItem(
     id: row['id'] as int,
     batchId: row['batch_id'] as int,
