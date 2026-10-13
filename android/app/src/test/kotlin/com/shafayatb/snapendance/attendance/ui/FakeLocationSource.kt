@@ -22,7 +22,10 @@ class FakeLocationSource : LocationSource {
         emitAll(updates)
     }
 
-    override fun isLocationEnabled(): Boolean = true
+    /** The device's location setting. */
+    var locationEnabled = true
+
+    override fun isLocationEnabled(): Boolean = locationEnabled
 
     /** Delivers [fix] to every running collection. */
     suspend fun send(fix: LocationFix) = updates.emit(fix)

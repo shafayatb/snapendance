@@ -48,12 +48,14 @@ class AttendanceViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = AttendanceViewModel(
-        locationSource = source,
-        officeStore = store,
-        elapsedRealtimeMillis = { nowElapsedRealtime },
-        currentTimeMillis = { nowEpochMillis },
-    )
+    /** A ViewModel whose screen has resumed holding [permission]. */
+    private fun viewModel(permission: LocationPermission = LocationPermission.Precise) =
+        AttendanceViewModel(
+            locationSource = source,
+            officeStore = store,
+            elapsedRealtimeMillis = { nowElapsedRealtime },
+            currentTimeMillis = { nowEpochMillis },
+        ).apply { onAction(AttendanceAction.ScreenResumed(permission)) }
 
     private fun fix(accuracyMeters: Float?, ageMillis: Long = 0L, latitude: Double = 23.8103) =
         LocationFix(
@@ -244,5 +246,148 @@ class AttendanceViewModelTest {
         assertEquals(0, source.activeRequests)
         advanceTimeBy(20_000L)
         assertEquals(emptyList<AttendanceEvent>(), events)
+    }
+
+    @Test
+    fun tapWithoutPermissionAsksForItAndGrantingPreciseStartsTheFetch() = runTest {
+        val viewModel = viewModel(LocationPermission.None)
+        val events = eventsOf(viewModel)
+
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+        assertEquals(listOf(AttendanceEvent.RequestLocationPermission), events)
+        assertEquals(0, source.activeRequests)
+
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.Precise, false))
+        source.send(fix(accuracyMeters = 6f))
+
+        assertEquals(23.8103, store.savedOffice?.latitude)
+        assertNull(viewModel.uiState.value.blocker)
+    }
+
+    @Test
+    fun firstRunWithoutPermissionShowsNoBlocker() = runTest {
+        // A1: the button stays enabled until the user has been asked.
+        assertNull(viewModel(LocationPermission.None).uiState.value.blocker)
+    }
+
+    @Test
+    fun grantingApproximateOnlyShowsTheApproximateBlockerAndDoesNotFetch() = runTest {
+        val viewModel = viewModel(LocationPermission.None)
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.Approximate, true))
+
+        assertEquals(LocationBlocker.ApproximateOnly, viewModel.uiState.value.blocker)
+        assertEquals(0, source.activeRequests)
+    }
+
+    @Test
+    fun resumingWithApproximateOnlyShowsTheApproximateBlocker() = runTest {
+        val viewModel = viewModel(LocationPermission.Approximate)
+
+        assertEquals(LocationBlocker.ApproximateOnly, viewModel.uiState.value.blocker)
+    }
+
+    @Test
+    fun denialThatCanBeAskedAgainOffersToAskAgain() = runTest {
+        val viewModel = viewModel(LocationPermission.None)
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.None, true))
+        // The dialog closing resumes the screen; that must not hide the blocker.
+        viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.None))
+
+        assertEquals(
+            LocationBlocker.PermissionDenied(canAskAgain = true),
+            viewModel.uiState.value.blocker,
+        )
+        assertEquals(0, source.activeRequests)
+    }
+
+    @Test
+    fun permanentDenialPointsToAppSettings() = runTest {
+        val viewModel = viewModel(LocationPermission.None)
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.None, false))
+        viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.None))
+
+        assertEquals(
+            LocationBlocker.PermissionDenied(canAskAgain = false),
+            viewModel.uiState.value.blocker,
+        )
+    }
+
+    @Test
+    fun resumingAfterPermissionIsGrantedInSettingsClearsTheBlocker() = runTest {
+        val viewModel = viewModel(LocationPermission.None)
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.None, false))
+        assertNotNull(viewModel.uiState.value.blocker)
+
+        viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.Precise))
+
+        assertNull(viewModel.uiState.value.blocker)
+        // Returning from settings is not a tap; the user starts the fetch.
+        assertEquals(0, source.activeRequests)
+    }
+
+    @Test
+    fun preciseGrantedFromABlockerDoesNotStartAFetchByItself() = runTest {
+        val viewModel = viewModel(LocationPermission.Approximate)
+        assertEquals(LocationBlocker.ApproximateOnly, viewModel.uiState.value.blocker)
+
+        // A7's "Use precise location" asks without Set Office Location being tapped.
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.Precise, false))
+
+        assertNull(viewModel.uiState.value.blocker)
+        assertEquals(0, source.activeRequests)
+    }
+
+    @Test
+    fun servicesOffShowsTheServicesBlockerOnResume() = runTest {
+        source.locationEnabled = false
+
+        val viewModel = viewModel()
+
+        assertEquals(LocationBlocker.LocationServicesOff, viewModel.uiState.value.blocker)
+    }
+
+    @Test
+    fun tapWithServicesOffShowsTheServicesBlockerAndDoesNotFetch() = runTest {
+        val viewModel = viewModel()
+        source.locationEnabled = false
+
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+
+        assertEquals(LocationBlocker.LocationServicesOff, viewModel.uiState.value.blocker)
+        assertNull(viewModel.uiState.value.fixAttempt)
+        assertEquals(0, source.activeRequests)
+    }
+
+    @Test
+    fun resumingWithServicesBackOnClearsTheBlocker() = runTest {
+        source.locationEnabled = false
+        val viewModel = viewModel()
+        assertEquals(LocationBlocker.LocationServicesOff, viewModel.uiState.value.blocker)
+
+        source.locationEnabled = true
+        viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.Precise))
+
+        assertNull(viewModel.uiState.value.blocker)
+    }
+
+    @Test
+    fun servicesTurnedOffDuringAnAttemptShowTheServicesBlockerInsteadOfNoFix() = runTest {
+        val viewModel = viewModel()
+        val events = eventsOf(viewModel)
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+
+        source.locationEnabled = false
+        advanceTimeBy(15_001L)
+
+        assertEquals(LocationBlocker.LocationServicesOff, viewModel.uiState.value.blocker)
+        assertEquals(emptyList<AttendanceEvent>(), events)
+        assertNull(store.savedOffice)
     }
 }

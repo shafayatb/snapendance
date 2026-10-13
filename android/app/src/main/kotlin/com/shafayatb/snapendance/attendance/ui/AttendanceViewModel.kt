@@ -44,6 +44,18 @@ class AttendanceViewModel(
 
     private var fixJob: Job? = null
 
+    // The permission the screen last reported. Kept out of the UI state: the screen shows its
+    // effect (the blocker), not the permission itself.
+    private var permission = LocationPermission.None
+
+    // What the last request result said about a denial. Only a request result can tell whether
+    // the system will ask again, so it is kept until permission is granted.
+    private var denial: LocationBlocker.PermissionDenied? = null
+
+    // Set when a tap asked for permission, so granting it continues to the fetch. A grant from a
+    // blocker's recovery button does not start one.
+    private var setOfficeAfterPermission = false
+
     init {
         viewModelScope.launch {
             // The store is the source of truth: a newly saved office reaches the screen from here.
@@ -66,6 +78,12 @@ class AttendanceViewModel(
             }
             AttendanceAction.ReplaceOfficeDismiss ->
                 _uiState.update { it.copy(isReplaceConfirmationVisible = false) }
+            is AttendanceAction.ScreenResumed -> {
+                permission = action.permission
+                if (permission != LocationPermission.None) denial = null
+                refreshBlocker()
+            }
+            is AttendanceAction.PermissionResult -> onPermissionResult(action)
             AttendanceAction.ScreenStopped -> {
                 // Silent: the card returns to what it showed before the attempt.
                 fixJob?.cancel()
@@ -77,22 +95,59 @@ class AttendanceViewModel(
     private fun onSetOfficeClick() {
         // One attempt at a time: a second tap must not open a second location request.
         if (fixJob?.isActive == true) return
-        if (_uiState.value.office != null) {
+        when {
+            permission != LocationPermission.Precise -> {
+                setOfficeAfterPermission = true
+                viewModelScope.launch { _events.send(AttendanceEvent.RequestLocationPermission) }
+            }
             // Replacing cannot be undone, so one tap on the outlined button must not do it.
-            _uiState.update { it.copy(isReplaceConfirmationVisible = true) }
-        } else {
-            startFixAttempt()
+            _uiState.value.office != null ->
+                _uiState.update { it.copy(isReplaceConfirmationVisible = true) }
+            else -> startFixAttempt()
         }
     }
 
+    private fun onPermissionResult(result: AttendanceAction.PermissionResult) {
+        permission = result.permission
+        denial = if (permission == LocationPermission.None) {
+            LocationBlocker.PermissionDenied(canAskAgain = result.shouldShowRationale)
+        } else {
+            null
+        }
+        val continueSetOffice = setOfficeAfterPermission
+        setOfficeAfterPermission = false
+        refreshBlocker()
+        if (continueSetOffice && permission == LocationPermission.Precise) onSetOfficeClick()
+    }
+
+    /** One blocker at a time, permission first. Before any denial, no permission is not one (A1). */
+    private fun refreshBlocker() {
+        val blocker = when {
+            permission == LocationPermission.None && denial != null -> denial
+            permission == LocationPermission.Approximate -> LocationBlocker.ApproximateOnly
+            !locationSource.isLocationEnabled() -> LocationBlocker.LocationServicesOff
+            else -> null
+        }
+        _uiState.update { it.copy(blocker = blocker) }
+    }
+
     private fun startFixAttempt() {
+        if (!locationSource.isLocationEnabled()) {
+            _uiState.update { it.copy(blocker = LocationBlocker.LocationServicesOff) }
+            return
+        }
         fixJob = viewModelScope.launch {
             _uiState.update { it.copy(fixAttempt = FixAttempt()) }
             val outcome = awaitUsableFix()
             _uiState.update { it.copy(fixAttempt = null) }
             when (outcome) {
                 is FixOutcome.Usable -> save(outcome.office)
-                is FixOutcome.Failed -> _events.send(outcome.event)
+                // Services turned off mid-attempt explain the failure better than its message.
+                is FixOutcome.Failed -> if (locationSource.isLocationEnabled()) {
+                    _events.send(outcome.event)
+                } else {
+                    _uiState.update { it.copy(blocker = LocationBlocker.LocationServicesOff) }
+                }
             }
         }
     }
