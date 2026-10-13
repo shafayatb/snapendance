@@ -17,7 +17,7 @@ task file in the same task so this folder stays the current scope record.
 |---|------|------------|--------|
 | 01 | [App shell and native attendance entry](01-app-shell-native-bridge.md) | - | Done |
 | 02 | [Attendance: set office location](02-attendance-office-setup.md) | 01 | Done |
-| 03 | [Attendance: live distance and marking](03-attendance-distance-marking.md) | 02 | Not started |
+| 03 | [Attendance: live distance and marking](03-attendance-distance-marking.md) | 02 | In progress |
 | 04 | [Camera preview and lifecycle](04-camera-preview.md) | 01 | Not started |
 | 05 | [Camera zoom, lens, and flash controls](05-camera-zoom-controls.md) | 04 | Not started |
 | 06 | [Tap-to-focus](06-camera-tap-focus.md) | 04 | Not started |
