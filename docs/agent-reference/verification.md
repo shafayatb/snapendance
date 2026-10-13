@@ -23,9 +23,12 @@ leave tests passing.
 Static declaration checks can protect a specific manifest or platform contract, but do not prove
 installed-app behavior. Do not manufacture failing configuration/string checks to claim TDD.
 
-Docs/rules/symlink-only changes need link/content/diff checks, not a new app test, dependency
-installation, full build, or device reinstall. Label physical hardware and OS checks as manual
-verification; they do not substitute for test-first domain/queue behavior.
+Label physical hardware and OS checks as manual verification; they do not substitute for
+test-first domain/queue behavior.
+
+For meaningful behavioral changes, show the regression test fails when the behavior is removed or
+changed, when practical. Record the actual mutation and restore it before finishing; never claim a
+mutation check that did not occur.
 
 ## Proportional commands
 

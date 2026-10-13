@@ -1,6 +1,6 @@
 # Task 10: Background sync and connectivity
 
-**Status:** Not started · **Depends on:** 08, 09 · **Track:** Flutter uploads
+**Depends on:** 08, 09 · **Track:** Flutter uploads
 
 ## Goal
 

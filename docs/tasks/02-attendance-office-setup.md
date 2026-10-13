@@ -1,6 +1,6 @@
 # Task 02: Attendance - set office location
 
-**Status:** Not started · **Depends on:** 01 · **Track:** native Android
+**Depends on:** 01 · **Track:** native Android
 
 ## Goal
 

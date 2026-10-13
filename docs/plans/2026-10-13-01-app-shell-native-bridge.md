@@ -86,7 +86,7 @@ android/app/src/androidTest/kotlin/com/shafayatb/snapendance/attendance/Attendan
    `feat(app): show feedback when attendance cannot open`
 7. **Verification and records.** Device run (round trip ×5, rapid double tap, rotation on the
    native screen, background/return, H1/A1 screenshots), `docs/agent-log.md`, task status,
-   design README deviation (D7), implementation reference fix (built-in Kotlin), review handoff,
+   design README deviation (D7), implementation reference fix (built-in Kotlin),
    `FRESH_PROMPT.md`.
    `docs(tasks): record task 01 verification`
 

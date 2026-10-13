@@ -1,6 +1,6 @@
 # Task 08: Sync engine and mock upload API
 
-**Status:** Not started · **Depends on:** 07 · **Track:** Flutter uploads
+**Depends on:** 07 · **Track:** Flutter uploads
 
 ## Goal
 

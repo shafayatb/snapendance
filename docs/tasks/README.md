@@ -5,16 +5,8 @@ criteria, verification, and the decisions its plan must settle. The **how** belo
 plan saved to `docs/plans/YYYY-MM-DD-<task>.md` when the task starts. A task file is not
 authorization to implement; work starts only when the user assigns the task.
 
-## Workflow per task
-
-1. The user assigns a task and creates its branch `feature/NN-<task-file-slug>` from `develop`.
-   Read `AGENTS.md`, the task file, and the references it lists.
-2. Inspect the current code, settle the task's open decisions, and write the plan. Get approval.
-3. Implement the plan's steps one at a time, test-first. After each step, stop at the commit
-   checkpoint so the user reviews the diff and commits before the next step. Verify on Android and
-   record evidence in `docs/agent-log.md`.
-4. Update the task's status below, write the review handoff and `FRESH_PROMPT.md`, suggest the
-   commit message(s), and stop. After review approval the user merges into `develop` (`--no-ff`).
+The per-task workflow is in the [delivery](../agent-reference/delivery.md) and
+[Git](../agent-reference/git.md) references.
 
 Acceptance criteria may be refined in the approved plan. If a plan changes a criterion, update the
 task file in the same task so this folder stays the current scope record.
@@ -36,6 +28,7 @@ task file in the same task so this folder stays the current scope record.
 | 11 | [Submission](11-submission.md) | all | Not started |
 
 Status values: `Not started`, `Planned` (plan approved), `In progress`, `In review`, `Done`.
+Update a task's status here as it moves; task files do not carry status.
 Tasks 02-03 (native) and 04-07 (Flutter camera) are independent tracks after task 01.
 
 Task 01 is assigned (2026-10-12); its fresh-context prompt is in the root `FRESH_PROMPT.md`.
