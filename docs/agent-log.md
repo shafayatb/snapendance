@@ -762,5 +762,82 @@ the handoff file, not the conversation. The agent stopped and asked; the user an
   task 07), and "Camera unavailable" (the app in front always gets the camera; tests only).
 - **Task review:** not run, by the user's triage; one review is planned at the end.
 - **Checks:** `flutter test` 55/55, `flutter analyze` clean, `git diff --check` clean.
-- **Git:** `feature/04-camera`, commits `44613c9` … `696d61a`, `0f65528`, and this records commit,
-  made by the agent with the user's authorization.
+- **Git:** `feature/04-camera`, commits `44613c9` … `696d61a`, `0f65528`, and the records commit
+  `3bd23ac`, made by the agent with the user's authorization. Asked whether to merge, the user
+  answered:
+
+  > Yes merge it
+
+  The agent merged it into `develop` with `--no-ff` (`52b7a3b`).
+
+## 2026-10-14 · Tasks 07-10: capture, batches, sync, Upload Manager, background sync (Claude Code)
+
+### Tasks 07-10 merged (triaged mode) · Essential
+
+> Run @FRESH_PROMPT.md
+
+The agent wrote the plan (`docs/plans/2026-10-14-07-uploads.md`, U1-U13) and asked whether to
+commit each verified step on `feature/07-uploads`; the user chose:
+
+> Commit each step (Recommended)
+
+Steps 1-8 ran in that session. The last session resumed at step 9 with `Run @FRESH_PROMPT.md`;
+asked to authorize the step 9 commit in the conversation, the user chose:
+
+> Commit and merge
+
+- **Approach:** Flutter, feature-first `lib/features/uploads/`. `sqflite` database `uploads.db`
+  (batches, items, a `settings` row for the mock scenario); captures copied from the plugin's
+  temporary file into `captures/` before the row is inserted, with startup reconciliation for
+  orphans either way. One open batch, frozen as queued on submit. `SyncEngine.run()` claims one
+  item at a time with a single `UPDATE … WHERE id = (SELECT …)`, a claim token and a 2-minute
+  expiry, uploads through `UploadApi` (`MockUploadApi`: success, fail once, timeout, no network,
+  permanent) with a 30 s timeout, and writes outcomes only for its own claim. Five attempts, then
+  Failed with the last reason. WorkManager runs the engine in a background isolate: unique one-off
+  `upload-queue` with a network constraint and exponential backoff, plus a 15-minute periodic
+  recovery task. Cubits: `CameraCubit.takePicture()`, `BatchCubit` (capture, submit, counts,
+  notices, mock scenario), `UploadsCubit` (Upload Manager). `connectivity_plus` drives the
+  connection pill and enqueues work on regain.
+- **Changed from the plan:** BatchCubit re-reads its counts every 3 s, because the worker's
+  writes come from another isolate (found on the phone, below). The empty-batch hint (C7) is a
+  BatchCubit notice, so UPLOAD BATCH (0) always calls `submit()` (task 07 file updated). The work
+  policy is `ExistingWorkPolicy.update` (native APPEND_OR_REPLACE). The worker leaves its
+  database open and returns `false` on errors instead of throwing. The manifest removes the
+  workmanager plugin's unused `POST_NOTIFICATIONS` and `FOREGROUND_SERVICE_SHORT_SERVICE`.
+- **Test-first evidence** (`flutter test`, 129 at the end, 74 new):
+  - Repository (9, real FFI database and temp directory): all failed on stubs first. Removing
+    the copy's cleanup after a failed insert failed its test (restored).
+  - BatchCubit (9 blocTests) and `takePicture` (2): failing first.
+  - Camera and Home widgets (9): failing first.
+  - Engine and mock (16): failing on stubs first. Removing the claim's re-check failed the
+    two-concurrent-runs test (restored). Claim expiry and the timeout use an injected clock and
+    duration.
+  - Simulation sheet and its Cubit state; UploadsCubit (5, seeded database) and Upload Manager
+    widgets (6: each item state, empty, missing file); scheduling decisions with a fake
+    scheduler and 3 worker tests on a test database; connection pill (2 Cubit, 3 widget).
+  - Found on the phone: the cloud badge still read "3 pending" after the worker had uploaded
+    everything. A failing test first, then BatchCubit's re-read.
+- **Device run** (Argent and adb on the Galaxy A04s, SM-A047F, Android 14, debug APK; the lens
+  stayed covered, so every photo was black): "Saving photo 1…" with the controls disabled; 3
+  captures in `app_flutter/captures` (~140 KB each, temp files gone); "Batch of 3 photos queued"
+  with badge 3; 2 more captured, force-stopped, reopened: Home "3 images waiting", camera "2 in
+  this batch". The C11 sheet's "Fail once" survived a restart. Upload Manager: Batch 1 with three
+  QUEUED rows and real sizes. With "Fail once": on launch the periodic run returned RETRY and the
+  one-off SUCCESS, all uploaded without a tap; a new batch got RETRY, then SUCCESS about 30 s
+  later. Airplane mode, 2 captured and submitted, app sent Home: no worker ran (`dumpsys
+  jobscheduler`: CONNECTIVITY unsatisfied); network back at 05:19:54, worker SUCCESS at 05:20:05
+  with the app in the background, badge clear on return. The pill went STABLE LINK → OFFLINE →
+  STABLE LINK.
+- **Not verified on the phone:** the flash firing on capture and the preview image (lens
+  covered); the Timeout and Permanent-failure scenarios (tests only); swiping the app away and
+  process recreation during a run; the camera staying open under the Upload Manager.
+- **Deferred:** the camera plugin's merged `RECORD_AUDIO` and `WRITE_EXTERNAL_STORAGE`
+  permissions, the unchecked device scenarios, and C9's "Photos already in this batch are kept"
+  (backlog). README notes on scheduling delays and force-stop are in the plan for task 11.
+- **Task review:** not run, by the user's triage; one review is planned at the end of the
+  project.
+- **Checks:** `flutter test` 129/129, `flutter analyze` clean, `git diff --check` clean.
+- **Git:** `feature/07-uploads` from `develop` at `52b7a3b`; commits `9810aac`, `8675eae`,
+  `0f5e2a3`, `6e6ec5a`, `025542c`, `a097770`, `b7701bf`, `447c3ca`, `99a7726`, `b7bc01b`, and this
+  records commit, made by the agent with the user's authorization; merged into `develop` with
+  `--no-ff` by the agent.
