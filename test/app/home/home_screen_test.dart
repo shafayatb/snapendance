@@ -2,11 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:bloc_test/bloc_test.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:snapendance/app/home/home_screen.dart';
 import 'package:snapendance/app/native/attendance_launcher.dart';
 import 'package:snapendance/features/camera/data/camera_service.dart';
+import 'package:snapendance/features/uploads/presentation/batch_cubit.dart';
+import 'package:snapendance/features/uploads/presentation/batch_state.dart';
 
 // Written out here rather than imported, so a renamed channel in the app fails
 // this test instead of moving with it. Must match MainActivity.kt.
@@ -18,20 +22,28 @@ const _launchFailedMessage = "Couldn't open Attendance. Please try again.";
 
 class MockCameraService extends Mock implements CameraService {}
 
+class MockBatchCubit extends MockCubit<BatchState> implements BatchCubit {}
+
 void main() {
   late List<MethodCall> receivedCalls;
   late MockCameraService cameraService;
+  late MockBatchCubit batch;
 
-  Widget home() => MaterialApp(
-    home: HomeScreen(
-      attendanceLauncher: AttendanceLauncher(),
-      cameraService: cameraService,
+  Widget home() => BlocProvider<BatchCubit>.value(
+    value: batch,
+    child: MaterialApp(
+      home: HomeScreen(
+        attendanceLauncher: AttendanceLauncher(),
+        cameraService: cameraService,
+      ),
     ),
   );
 
   setUp(() {
     receivedCalls = [];
     cameraService = MockCameraService();
+    batch = MockBatchCubit();
+    when(() => batch.state).thenReturn(const BatchState());
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_navigationChannel, (call) async {
           receivedCalls.add(call);
@@ -141,4 +153,22 @@ void main() {
       expect(cameraCard, findsOneWidget);
     },
   );
+
+  testWidgets('the camera card shows how many images wait to upload (H2)', (
+    tester,
+  ) async {
+    when(() => batch.state).thenReturn(const BatchState(pendingCount: 4));
+    await tester.pumpWidget(home());
+
+    expect(find.text('4 images waiting'), findsOneWidget);
+    expect(find.text('Capture a batch of photos'), findsNothing);
+  });
+
+  testWidgets('with nothing waiting the camera card keeps its subtitle', (
+    tester,
+  ) async {
+    await tester.pumpWidget(home());
+
+    expect(find.text('Capture a batch of photos'), findsOneWidget);
+  });
 }

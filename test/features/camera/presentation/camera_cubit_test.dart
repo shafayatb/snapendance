@@ -420,4 +420,26 @@ void main() {
       verify: (_) => verifyNever(() => session.focusAt(any())),
     );
   });
+
+  group('takePicture', () {
+    test('returns the open camera\'s photo', () async {
+      when(() => session.takePicture()).thenAnswer((_) async => '/tmp/a.jpg');
+      final cubit = CameraCubit(service);
+      await cubit.start();
+
+      expect(await cubit.takePicture(), '/tmp/a.jpg');
+      await cubit.close();
+    });
+
+    test('fails while no camera is open', () async {
+      final cubit = CameraCubit(service);
+
+      await expectLater(
+        cubit.takePicture(),
+        throwsA(isA<CameraCaptureException>()),
+      );
+      verifyNever(() => session.takePicture());
+      await cubit.close();
+    });
+  });
 }

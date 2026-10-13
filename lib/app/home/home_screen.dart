@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../features/camera/data/camera_service.dart';
 import '../../features/camera/presentation/camera_page.dart';
+import '../../features/uploads/presentation/batch_cubit.dart';
+import '../../features/uploads/presentation/batch_state.dart';
 import '../native/attendance_launcher.dart';
 import '../theme/app_tokens.dart';
 
@@ -87,14 +90,20 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: _FeatureCard(
-                  icon: Icons.photo_camera_outlined,
-                  title: 'Camera & Uploads',
-                  // The pending-upload summary (H2) arrives with the upload queue.
-                  subtitle: 'Capture a batch of photos',
-                  onTap: () => Navigator.of(
-                    context,
-                  ).push(CameraPage.route(cameraService)),
+                child: BlocSelector<BatchCubit, BatchState, int>(
+                  selector: (state) => state.pendingCount,
+                  builder: (context, pending) => _FeatureCard(
+                    icon: Icons.photo_camera_outlined,
+                    title: 'Camera & Uploads',
+                    // H2: the pending count, which Flutter owns.
+                    subtitle: pending == 0
+                        ? 'Capture a batch of photos'
+                        : '$pending ${pending == 1 ? 'image' : 'images'} waiting',
+                    statusColor: pending == 0 ? null : AppStatusColors.pending,
+                    onTap: () => Navigator.of(
+                      context,
+                    ).push(CameraPage.route(cameraService)),
+                  ),
                 ),
               ),
             ],
@@ -110,12 +119,16 @@ class _FeatureCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.statusColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+
+  /// Set for a status line (H2): the subtitle gets this color and a dot.
+  final Color? statusColor;
   final VoidCallback onTap;
 
   @override
@@ -166,12 +179,29 @@ class _FeatureCard extends StatelessWidget {
                           style: textTheme.titleMedium?.copyWith(fontSize: 17),
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          subtitle,
-                          style: textTheme.bodyMedium?.copyWith(
-                            height: 18 / 14,
-                            color: colors.onSurfaceVariant,
-                          ),
+                        Row(
+                          children: [
+                            if (statusColor != null) ...[
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: statusColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Flexible(
+                              child: Text(
+                                subtitle,
+                                style: textTheme.bodyMedium?.copyWith(
+                                  height: 18 / 14,
+                                  color: statusColor ?? colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

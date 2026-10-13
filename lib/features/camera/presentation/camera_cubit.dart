@@ -216,6 +216,16 @@ class CameraCubit extends Cubit<CameraState> {
         .ignore();
   }
 
+  /// Takes a still with the current flash mode; returns its temporary file. Throws
+  /// [CameraCaptureException], also when no camera is open.
+  Future<String> takePicture() {
+    final session = _session;
+    if (session == null || state.status != CameraStatus.ready) {
+      return Future.error(const CameraCaptureException('Camera not ready'));
+    }
+    return session.takePicture();
+  }
+
   @override
   Future<void> close() async {
     _generation++;

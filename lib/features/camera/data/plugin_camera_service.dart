@@ -123,5 +123,14 @@ class _PluginCameraSession implements CameraSession {
   }
 
   @override
+  Future<String> takePicture() async {
+    try {
+      return (await _controller.takePicture()).path;
+    } on CameraException catch (error) {
+      throw CameraCaptureException(error.description ?? error.code);
+    }
+  }
+
+  @override
   Future<void> close() => _controller.dispose();
 }

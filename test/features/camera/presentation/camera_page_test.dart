@@ -7,19 +7,52 @@ import 'package:snapendance/features/camera/data/camera_service.dart';
 import 'package:snapendance/features/camera/presentation/camera_cubit.dart';
 import 'package:snapendance/features/camera/presentation/camera_page.dart';
 import 'package:snapendance/features/camera/presentation/camera_state.dart';
+import 'package:snapendance/features/uploads/data/connectivity_service.dart';
+import 'package:snapendance/features/uploads/data/upload_queue_repository.dart';
+import 'package:snapendance/features/uploads/data/upload_scheduler.dart';
+import 'package:snapendance/features/uploads/domain/upload_models.dart';
+import 'package:snapendance/features/uploads/presentation/batch_cubit.dart';
+import 'package:snapendance/features/uploads/presentation/batch_state.dart';
 
 class MockCameraCubit extends MockCubit<CameraState> implements CameraCubit {}
 
+class MockBatchCubit extends MockCubit<BatchState> implements BatchCubit {}
+
+class MockUploadQueueRepository extends Mock implements UploadQueueRepository {}
+
+class MockUploadScheduler extends Mock implements UploadScheduler {}
+
+class MockConnectivityService extends Mock implements ConnectivityService {}
+
 void main() {
   late MockCameraCubit cubit;
+  late MockBatchCubit batch;
+  late MockUploadQueueRepository uploadQueue;
+  late MockConnectivityService connectivity;
 
   setUpAll(() {
     registerFallbackValue(Offset.zero);
     registerFallbackValue(Size.zero);
+    registerFallbackValue(() async => '');
+    registerFallbackValue(MockScenario.success);
   });
 
   setUp(() {
     cubit = MockCameraCubit();
+    batch = MockBatchCubit();
+    uploadQueue = MockUploadQueueRepository();
+    when(() => uploadQueue.changes).thenAnswer((_) => const Stream.empty());
+    when(() => uploadQueue.queuedBatches()).thenAnswer((_) async => []);
+    when(() => uploadQueue.lastAttemptFailed()).thenAnswer((_) async => false);
+    connectivity = MockConnectivityService();
+    when(() => connectivity.isConnected()).thenAnswer((_) async => true);
+    when(
+      () => connectivity.connectedChanges,
+    ).thenAnswer((_) => const Stream.empty());
+    when(() => batch.state).thenReturn(const BatchState());
+    when(() => batch.capture(any())).thenAnswer((_) async {});
+    when(() => batch.submit()).thenAnswer((_) async {});
+    when(() => batch.setScenario(any())).thenAnswer((_) async {});
     when(() => cubit.retry()).thenAnswer((_) async {});
     when(() => cubit.openAppSettings()).thenAnswer((_) async {});
     when(() => cubit.preview).thenReturn(null);
@@ -30,21 +63,40 @@ void main() {
     WidgetTester tester,
     CameraStatus status, {
     CameraState? state,
+    BatchState? batchState,
   }) async {
+    // The design's phone frame, so the controls sit where they do on a phone.
+    tester.view
+      ..physicalSize = const Size(412, 915)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     when(() => cubit.state).thenReturn(state ?? CameraState(status: status));
+    if (batchState != null) when(() => batch.state).thenReturn(batchState);
     await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) => TextButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => BlocProvider<CameraCubit>.value(
-                  value: cubit,
-                  child: const CameraView(),
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<UploadQueueRepository>.value(value: uploadQueue),
+          RepositoryProvider<UploadScheduler>.value(
+            value: MockUploadScheduler(),
+          ),
+          RepositoryProvider<ConnectivityService>.value(value: connectivity),
+        ],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => MultiBlocProvider(
+                    providers: [
+                      BlocProvider<CameraCubit>.value(value: cubit),
+                      BlocProvider<BatchCubit>.value(value: batch),
+                    ],
+                    child: const CameraView(),
+                  ),
                 ),
               ),
+              child: const Text('Home'),
             ),
-            child: const Text('Home'),
           ),
         ),
       ),
@@ -192,8 +244,9 @@ void main() {
     ) async {
       await showReady(tester);
       final center = tester.getCenter(find.byType(CameraView));
-      double readoutOpacity() =>
-          tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity;
+      double readoutOpacity() => tester
+          .widget<AnimatedOpacity>(find.byKey(const ValueKey('zoom-readout')))
+          .opacity;
       expect(readoutOpacity(), 0);
 
       final first = await tester.startGesture(center - const Offset(0, 50));
@@ -343,6 +396,179 @@ void main() {
 
       expect(find.byTooltip('Flash unavailable'), findsNothing);
       expect(find.byTooltip('Flash off'), findsNothing);
+    });
+  });
+
+  group('batch', () {
+    const ready = CameraState(
+      status: CameraStatus.ready,
+      maxZoom: 8,
+      presets: [1, 2, 5],
+      flashAvailable: true,
+      focusSupported: true,
+    );
+
+    Finder uploadButton(int count) =>
+        find.bySemanticsLabel('Upload batch ($count)');
+
+    testWidgets('the shutter captures with the camera\'s picture', (
+      tester,
+    ) async {
+      when(() => cubit.takePicture()).thenAnswer((_) async => '/tmp/a.jpg');
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      await tester.tap(find.bySemanticsLabel('Take photo'));
+
+      final takePicture =
+          verify(() => batch.capture(captureAny())).captured.single
+              as Future<String> Function();
+      expect(await takePicture(), '/tmp/a.jpg');
+    });
+
+    testWidgets('an empty batch shows a placeholder; the button still asks', (
+      tester,
+    ) async {
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      expect(find.byKey(const ValueKey('empty-batch')), findsOneWidget);
+      await tester.tap(uploadButton(0));
+      // BatchCubit refuses an empty batch and explains (see the next test).
+      verify(() => batch.submit()).called(1);
+    });
+
+    testWidgets('the empty-batch hint is shown', (tester) async {
+      whenListen(
+        batch,
+        Stream.value(
+          const BatchState(notice: BatchNotice(BatchNoticeKind.emptyBatch, 1)),
+        ),
+        initialState: const BatchState(),
+      );
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      expect(find.text('Take a photo to start a batch'), findsOneWidget);
+    });
+
+    testWidgets('the count badge and button follow the open batch', (
+      tester,
+    ) async {
+      await showCamera(
+        tester,
+        CameraStatus.ready,
+        state: ready,
+        batchState: const BatchState(openCount: 3, lastFilePath: '/c.jpg'),
+      );
+
+      expect(find.byKey(const ValueKey('batch-count')), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+      await tester.tap(uploadButton(3));
+      verify(() => batch.submit()).called(1);
+    });
+
+    testWidgets('while saving, the toast shows and the controls are off', (
+      tester,
+    ) async {
+      await showCamera(
+        tester,
+        CameraStatus.ready,
+        state: ready,
+        batchState: const BatchState(openCount: 12, saving: true),
+      );
+
+      expect(find.text('Saving photo 13…'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('Take photo'));
+      await tester.tap(uploadButton(12));
+      await tester.tap(find.bySemanticsLabel('Zoom 2×'));
+      verifyNever(() => batch.capture(any()));
+      verifyNever(() => batch.submit());
+      verifyNever(() => cubit.setZoom(any()));
+    });
+
+    testWidgets('a queued batch is announced', (tester) async {
+      whenListen(
+        batch,
+        Stream.value(
+          const BatchState(
+            pendingCount: 2,
+            notice: BatchNotice(BatchNoticeKind.batchQueued, 1, count: 2),
+          ),
+        ),
+        initialState: const BatchState(openCount: 2),
+      );
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      expect(find.text('Batch of 2 photos queued'), findsOneWidget);
+      expect(
+        find.text('Uploads retry automatically when online.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a failed capture is reported', (tester) async {
+      whenListen(
+        batch,
+        Stream.value(
+          const BatchState(
+            notice: BatchNotice(BatchNoticeKind.captureFailed, 1),
+          ),
+        ),
+        initialState: const BatchState(),
+      );
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      expect(find.text('Couldn’t save the photo. Try again.'), findsOneWidget);
+    });
+
+    testWidgets('the cloud icon shows the pending count', (tester) async {
+      await showCamera(
+        tester,
+        CameraStatus.ready,
+        state: ready,
+        batchState: const BatchState(pendingCount: 16),
+      );
+
+      expect(
+        find.bySemanticsLabel('Upload Manager, 16 pending'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('settings opens the labeled mock API sheet (C11)', (
+      tester,
+    ) async {
+      await showCamera(
+        tester,
+        CameraStatus.ready,
+        state: ready,
+        batchState: const BatchState(scenario: MockScenario.failOnce),
+      );
+
+      await tester.tap(find.byTooltip('Upload simulation'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Upload simulation'), findsOneWidget);
+      expect(find.text('MOCK API'), findsOneWidget);
+      final selected = tester.widget<RadioGroup<MockScenario>>(
+        find.byType(RadioGroup<MockScenario>),
+      );
+      expect(selected.groupValue, MockScenario.failOnce);
+
+      await tester.tap(find.text('Timeout (slow network)'));
+      verify(() => batch.setScenario(MockScenario.timeout)).called(1);
+
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+      expect(find.text('Upload simulation'), findsNothing);
+    });
+
+    testWidgets('the cloud icon opens the Upload Manager', (tester) async {
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      await tester.tap(find.bySemanticsLabel('Upload Manager'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Upload Manager'), findsOneWidget);
+      expect(find.text('Nothing waiting to upload'), findsOneWidget);
     });
   });
 }

@@ -16,6 +16,16 @@ class CameraUnavailableException implements Exception {
   String toString() => 'CameraUnavailableException: $message';
 }
 
+/// A still could not be taken.
+class CameraCaptureException implements Exception {
+  const CameraCaptureException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'CameraCaptureException: $message';
+}
+
 /// Boundary around the camera plugin and permission APIs, so [CameraCubit] can be tested with
 /// fakes.
 abstract interface class CameraService {
@@ -53,6 +63,10 @@ abstract interface class CameraSession implements CameraPreviewSource {
 
   /// Focuses (and meters exposure, where supported) at [point], normalized on the full preview.
   Future<void> focusAt(Offset point);
+
+  /// Takes a still with the current flash mode and returns its temporary file path. Throws
+  /// [CameraCaptureException].
+  Future<String> takePicture();
 
   Future<void> close();
 }
