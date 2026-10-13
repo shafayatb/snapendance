@@ -188,8 +188,8 @@ fun AttendanceRoot(
 }
 
 /**
- * Attendance screen (design A1, A2, A6-A8, P2). Task 03 adds the distance ring and Mark
- * Attendance. [onRecoveryClick] carries out the recovery of the blocker shown.
+ * Attendance screen (design A1-A9, P2): office card, distance ring or location blocker, and
+ * the Mark Attendance card. [onRecoveryClick] carries out the recovery of the blocker shown.
  */
 @Composable
 fun AttendanceScreen(
@@ -226,10 +226,21 @@ fun AttendanceScreen(
                 isBlocked = state.blocker != null,
                 onSetOfficeClick = { onAction(AttendanceAction.SetOfficeClick) },
             )
-            // Plan D7: in the area task 03's distance ring will use.
-            state.blocker?.let { blocker ->
+            // A blocker replaces the ring (task 02 plan D7); the card stays, locked.
+            val blocker = state.blocker
+            if (blocker != null) {
                 LocationIssuePanel(blocker = blocker, onRecoveryClick = { onRecoveryClick(blocker) })
+            } else {
+                DistanceRing(
+                    status = state.distance,
+                    markedAtEpochMillis = state.lastAttendance?.markedAtEpochMillis
+                        ?.takeIf { state.isMarkedToday },
+                )
             }
+            AttendanceCard(
+                state = state,
+                onMarkClick = { onAction(AttendanceAction.MarkAttendanceClick) },
+            )
         }
     }
 
@@ -349,7 +360,7 @@ private fun Context.startSettings(intent: Intent) {
 private fun AttendanceScreenPreview() {
     AttendanceTheme {
         AttendanceScreen(
-            state = AttendanceUiState(isOfficeLoaded = true),
+            state = AttendanceUiState(isOfficeLoaded = true, isAttendanceLoaded = true),
             onAction = {},
             onRecoveryClick = {},
             onNavigateBack = {},
