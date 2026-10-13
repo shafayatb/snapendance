@@ -22,8 +22,12 @@ sealed interface LocationBlocker {
      */
     data class PermissionDenied(val canAskAgain: Boolean) : LocationBlocker
 
-    /** Only approximate location is granted (A7); it is too coarse for a 50 m check. */
-    data object ApproximateOnly : LocationBlocker
+    /**
+     * Only approximate location is granted (A7); it is too coarse for a 50 m check. [canAskAgain]
+     * is false once the system no longer offers the precise upgrade, so recovery goes through app
+     * settings.
+     */
+    data class ApproximateOnly(val canAskAgain: Boolean) : LocationBlocker
 
     /** The device's location setting is off (A8). */
     data object LocationServicesOff : LocationBlocker
@@ -43,7 +47,11 @@ sealed interface AttendanceAction {
     data object ReplaceOfficeConfirm : AttendanceAction
     data object ReplaceOfficeDismiss : AttendanceAction
 
-    /** The screen reached `ON_RESUME` holding [permission]; services are re-checked too. */
+    /**
+     * The screen reached `ON_RESUME` holding [permission]; services are re-checked too. Also sent
+     * when A8's recovery finds location already on, since the notification shade does not pause
+     * the screen.
+     */
     data class ScreenResumed(val permission: LocationPermission) : AttendanceAction
 
     /**

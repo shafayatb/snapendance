@@ -24,6 +24,20 @@
     <string name="office_set_button">Set Office Location</string>
     <string name="office_fetching_button">Fetching GPS…</string>
 
+    <!-- Location blockers (design A6-A8); the "ask again" variants are plan D5 deviations. -->
+    <string name="issue_permission_title">Location permission is off</string>
+    <string name="issue_permission_body_ask">Snapendance uses your location only to measure the distance to the office. Allow it to continue.</string>
+    <string name="issue_permission_body_settings">Snapendance uses your location only to measure the distance to the office. Allow it in App settings to continue.</string>
+    <string name="issue_permission_action_ask">Allow location</string>
+    <string name="issue_precise_title">Precise location needed</string>
+    <string name="issue_precise_body_ask">Approximate location can be off by more than a kilometre, which is too coarse for a 50 m check.</string>
+    <string name="issue_precise_body_settings">Approximate location can be off by more than a kilometre, which is too coarse for a 50 m check. Turn on Precise location in App settings.</string>
+    <string name="issue_precise_action_ask">Use precise location</string>
+    <string name="issue_services_title">Device location is off</string>
+    <string name="issue_services_body">Turn on location services so Snapendance can measure your distance to the office.</string>
+    <string name="issue_services_action">Turn on location</string>
+    <string name="issue_open_app_settings">Open app settings</string>
+
     <!-- Replacing a saved office (plan D8; not in the design). -->
     <string name="office_replace_title">Replace saved office?</string>
     <string name="office_replace_body">Your current GPS position will replace the saved office.</string>

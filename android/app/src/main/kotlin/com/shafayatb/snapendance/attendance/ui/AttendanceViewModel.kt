@@ -48,9 +48,9 @@ class AttendanceViewModel(
     // effect (the blocker), not the permission itself.
     private var permission = LocationPermission.None
 
-    // What the last request result said about a denial. Only a request result can tell whether
-    // the system will ask again, so it is kept until permission is granted.
-    private var denial: LocationBlocker.PermissionDenied? = null
+    // Whether the last request result refused precise location and if the system will ask again.
+    // Only a request result can tell, so it is kept until the permission changes.
+    private var refusal: Refusal? = null
 
     // Set when a tap asked for permission, so granting it continues to the fetch. A grant from a
     // blocker's recovery button does not start one.
@@ -79,8 +79,9 @@ class AttendanceViewModel(
             AttendanceAction.ReplaceOfficeDismiss ->
                 _uiState.update { it.copy(isReplaceConfirmationVisible = false) }
             is AttendanceAction.ScreenResumed -> {
+                // A change made in app settings makes the last request's answer out of date.
+                if (action.permission != permission) refusal = null
                 permission = action.permission
-                if (permission != LocationPermission.None) denial = null
                 refreshBlocker()
             }
             is AttendanceAction.PermissionResult -> onPermissionResult(action)
@@ -109,10 +110,10 @@ class AttendanceViewModel(
 
     private fun onPermissionResult(result: AttendanceAction.PermissionResult) {
         permission = result.permission
-        denial = if (permission == LocationPermission.None) {
-            LocationBlocker.PermissionDenied(canAskAgain = result.shouldShowRationale)
-        } else {
+        refusal = if (permission == LocationPermission.Precise) {
             null
+        } else {
+            Refusal(canAskAgain = result.shouldShowRationale)
         }
         val continueSetOffice = setOfficeAfterPermission
         setOfficeAfterPermission = false
@@ -122,9 +123,13 @@ class AttendanceViewModel(
 
     /** One blocker at a time, permission first. Before any denial, no permission is not one (A1). */
     private fun refreshBlocker() {
+        val refusal = refusal
         val blocker = when {
-            permission == LocationPermission.None && denial != null -> denial
-            permission == LocationPermission.Approximate -> LocationBlocker.ApproximateOnly
+            permission == LocationPermission.None && refusal != null ->
+                LocationBlocker.PermissionDenied(refusal.canAskAgain)
+            // Until a request says otherwise, assume the system still offers the upgrade.
+            permission == LocationPermission.Approximate ->
+                LocationBlocker.ApproximateOnly(canAskAgain = refusal?.canAskAgain ?: true)
             !locationSource.isLocationEnabled() -> LocationBlocker.LocationServicesOff
             else -> null
         }
@@ -209,6 +214,8 @@ class AttendanceViewModel(
             _events.send(AttendanceEvent.OfficeSaveFailed)
         }
     }
+
+    private data class Refusal(val canAskAgain: Boolean)
 
     private sealed interface FixOutcome {
         data class Usable(val office: SavedOffice) : FixOutcome

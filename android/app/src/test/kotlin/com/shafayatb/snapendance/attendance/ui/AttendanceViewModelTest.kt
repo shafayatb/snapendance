@@ -277,7 +277,7 @@ class AttendanceViewModelTest {
 
         viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.Approximate, true))
 
-        assertEquals(LocationBlocker.ApproximateOnly, viewModel.uiState.value.blocker)
+        assertEquals(LocationBlocker.ApproximateOnly(canAskAgain = true), viewModel.uiState.value.blocker)
         assertEquals(0, source.activeRequests)
     }
 
@@ -285,7 +285,38 @@ class AttendanceViewModelTest {
     fun resumingWithApproximateOnlyShowsTheApproximateBlocker() = runTest {
         val viewModel = viewModel(LocationPermission.Approximate)
 
-        assertEquals(LocationBlocker.ApproximateOnly, viewModel.uiState.value.blocker)
+        assertEquals(LocationBlocker.ApproximateOnly(canAskAgain = true), viewModel.uiState.value.blocker)
+    }
+
+    @Test
+    fun approximateAfterTheSystemStopsAskingPointsToAppSettings() = runTest {
+        val viewModel = viewModel(LocationPermission.None)
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+
+        // Precise was refused and the system will not show the upgrade dialog again, so asking
+        // from A7 would return at once with nothing changed.
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.Approximate, false))
+        viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.Approximate))
+
+        assertEquals(
+            LocationBlocker.ApproximateOnly(canAskAgain = false),
+            viewModel.uiState.value.blocker,
+        )
+    }
+
+    @Test
+    fun changingThePermissionInSettingsForgetsTheLastRefusal() = runTest {
+        val viewModel = viewModel(LocationPermission.None)
+        viewModel.onAction(AttendanceAction.SetOfficeClick)
+        viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.None, false))
+
+        // Approximate granted in app settings: the old "won't ask again" no longer applies.
+        viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.Approximate))
+
+        assertEquals(
+            LocationBlocker.ApproximateOnly(canAskAgain = true),
+            viewModel.uiState.value.blocker,
+        )
     }
 
     @Test
@@ -335,7 +366,7 @@ class AttendanceViewModelTest {
     @Test
     fun preciseGrantedFromABlockerDoesNotStartAFetchByItself() = runTest {
         val viewModel = viewModel(LocationPermission.Approximate)
-        assertEquals(LocationBlocker.ApproximateOnly, viewModel.uiState.value.blocker)
+        assertEquals(LocationBlocker.ApproximateOnly(canAskAgain = true), viewModel.uiState.value.blocker)
 
         // A7's "Use precise location" asks without Set Office Location being tapped.
         viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.Precise, false))

@@ -1,10 +1,17 @@
 package com.shafayatb.snapendance.attendance.ui
 
 import android.Manifest
+import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,9 +48,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
+import com.google.android.gms.location.Priority
 import com.shafayatb.snapendance.R
 import com.shafayatb.snapendance.attendance.ui.theme.AttendanceSpacing
 import com.shafayatb.snapendance.attendance.ui.theme.AttendanceTheme
@@ -55,7 +68,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * Connects [AttendanceScreen] to [viewModel]: collects its state, carries out its events
- * (permission request, snackbars), and reports the permission result back.
+ * (permission request, snackbars) and the blockers' recoveries, and reports the permission and
+ * lifecycle back.
  */
 @Composable
 fun AttendanceRoot(
@@ -83,16 +97,31 @@ fun AttendanceRoot(
         )
     }
 
+    // Fine and coarse together: Android 12+ ignores a request for fine alone.
+    val requestPermission = {
+        permissionLauncher.launch(
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+        )
+    }
+    val recheckLocation = {
+        viewModel.onAction(AttendanceAction.ScreenResumed(context.locationPermission()))
+    }
+
+    // Nothing to read from the result: closing the dialog resumes the screen, which re-checks.
+    val turnOnLocationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) {}
+
+    // Permission and services can change in system settings while the screen is away (plan D6).
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { recheckLocation() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        viewModel.onAction(AttendanceAction.ScreenStopped)
+    }
+
     ObserveAsEvents(viewModel.events) { event ->
         val message = when (event) {
             AttendanceEvent.RequestLocationPermission -> {
-                // Fine and coarse together: Android 12+ ignores a request for fine alone.
-                permissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                    ),
-                )
+                requestPermission()
                 return@ObserveAsEvents
             }
             AttendanceEvent.NoFix -> resources.getString(R.string.office_error_no_fix)
@@ -122,16 +151,30 @@ fun AttendanceRoot(
     AttendanceScreen(
         state = state,
         onAction = viewModel::onAction,
+        onRecoveryClick = { blocker ->
+            when (blocker) {
+                is LocationBlocker.PermissionDenied ->
+                    if (blocker.canAskAgain) requestPermission() else context.openAppSettings()
+                is LocationBlocker.ApproximateOnly ->
+                    if (blocker.canAskAgain) requestPermission() else context.openAppSettings()
+                LocationBlocker.LocationServicesOff ->
+                    activity?.turnOnLocation(turnOnLocationLauncher, onAlreadyOn = recheckLocation)
+            }
+        },
         onNavigateBack = onNavigateBack,
         snackbarHostState = snackbarHostState,
     )
 }
 
-/** Attendance screen (design A1, A2, P2). Task 03 adds the distance ring and Mark Attendance. */
+/**
+ * Attendance screen (design A1, A2, A6-A8, P2). Task 03 adds the distance ring and Mark
+ * Attendance. [onRecoveryClick] carries out the recovery of the blocker shown.
+ */
 @Composable
 fun AttendanceScreen(
     state: AttendanceUiState,
     onAction: (AttendanceAction) -> Unit,
+    onRecoveryClick: (LocationBlocker) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
@@ -161,6 +204,10 @@ fun AttendanceScreen(
                 isBlocked = state.blocker != null,
                 onSetOfficeClick = { onAction(AttendanceAction.SetOfficeClick) },
             )
+            // Plan D7: in the area task 03's distance ring will use.
+            state.blocker?.let { blocker ->
+                LocationIssuePanel(blocker = blocker, onRecoveryClick = { onRecoveryClick(blocker) })
+            }
         }
     }
 
@@ -237,10 +284,53 @@ private fun Context.locationPermission(): LocationPermission = when {
 private fun Context.isGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
+/** This app's page in system settings, where a permission the system no longer asks for is changed. */
+private fun Context.openAppSettings() {
+    startSettings(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+}
+
+/**
+ * Shows the Play services "turn on location" dialog (A8), or the system location settings when
+ * it cannot be shown (no Play services, or the device does not allow the change). [onAlreadyOn]
+ * runs when location is on already: turned on from the notification shade, which does not
+ * resume the screen. Callbacks are tied to this Activity, so none runs after it stops.
+ */
+private fun Activity.turnOnLocation(
+    dialogLauncher: ActivityResultLauncher<IntentSenderRequest>,
+    onAlreadyOn: () -> Unit,
+) {
+    val request = LocationSettingsRequest.Builder()
+        .addLocationRequest(LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1_000L).build())
+        .build()
+    LocationServices.getSettingsClient(this).checkLocationSettings(request)
+        .addOnSuccessListener(this) { onAlreadyOn() }
+        .addOnFailureListener(this) { error ->
+            if (error is ResolvableApiException) {
+                dialogLauncher.launch(IntentSenderRequest.Builder(error.resolution).build())
+            } else {
+                startSettings(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            }
+        }
+}
+
+/** Opens a settings screen, or the main settings page on a device without that screen. */
+private fun Context.startSettings(intent: Intent) {
+    try {
+        startActivity(intent)
+    } catch (error: ActivityNotFoundException) {
+        startActivity(Intent(Settings.ACTION_SETTINGS))
+    }
+}
+
 @Preview(showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
 private fun AttendanceScreenPreview() {
     AttendanceTheme {
-        AttendanceScreen(state = AttendanceUiState(), onAction = {}, onNavigateBack = {})
+        AttendanceScreen(
+            state = AttendanceUiState(),
+            onAction = {},
+            onRecoveryClick = {},
+            onNavigateBack = {},
+        )
     }
 }
