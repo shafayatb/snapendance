@@ -30,11 +30,13 @@
             </intent-filter>
         </activity>
         <!-- Native Compose attendance screen. Opened only from the Flutter home, in the same task
-             (same affinity as MainActivity), so Back returns to Flutter. -->
+             (same affinity as MainActivity), so Back returns to Flutter. Portrait only for now:
+             recreating the Activity stops the screen, which cancels a running GPS fetch. -->
         <activity
             android:name=".attendance.AttendanceActivity"
             android:exported="false"
             android:launchMode="singleTop"
+            android:screenOrientation="portrait"
             android:taskAffinity=""
             android:theme="@style/AttendanceTheme" />
         <!-- Don't delete the meta-data below.
