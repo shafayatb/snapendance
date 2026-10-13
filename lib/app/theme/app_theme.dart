@@ -9,6 +9,15 @@ ThemeData buildLightTheme() {
     onPrimary: AppColors.onPrimary,
     primaryContainer: AppColors.primaryContainer,
     onPrimaryContainer: AppColors.primary,
+    // The design has one accent; map the other roles to it, not to M3's teal defaults.
+    secondary: AppColors.primary,
+    onSecondary: AppColors.onPrimary,
+    secondaryContainer: AppColors.primaryContainer,
+    onSecondaryContainer: AppColors.primary,
+    tertiary: AppColors.primary,
+    onTertiary: AppColors.onPrimary,
+    tertiaryContainer: AppColors.primaryContainer,
+    onTertiaryContainer: AppColors.primary,
     surface: AppColors.surface,
     onSurface: AppColors.onSurface,
     onSurfaceVariant: AppColors.onSurfaceVariant,
@@ -17,6 +26,7 @@ ThemeData buildLightTheme() {
     outlineVariant: AppColors.outlineVariant,
     error: AppStatusColors.failed,
     errorContainer: AppStatusColors.failedContainer,
+    onErrorContainer: AppStatusColors.failed,
   );
 
   return ThemeData(
@@ -24,14 +34,11 @@ ThemeData buildLightTheme() {
     scaffoldBackgroundColor: AppColors.background,
     fontFamily: AppFonts.sans,
     textTheme: _textTheme,
+    // Elevation and shape stay per card, so Card.outlined keeps its border.
     cardTheme: CardThemeData(
       color: AppColors.surface,
-      elevation: 1,
       // Approximates the design's light Level 1 shadow.
       shadowColor: AppColors.onSurface.withValues(alpha: 0.25),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
     ),
     extensions: const [StatusColors.light],
   );

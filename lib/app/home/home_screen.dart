@@ -19,7 +19,8 @@ class HomeScreen extends StatelessWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
-        systemNavigationBarColor: Colors.transparent,
+        // Opaque, so Android 8-9 (no edge-to-edge) still show the page color.
+        systemNavigationBarColor: AppColors.background,
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
@@ -80,6 +81,10 @@ class _FeatureCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Card(
       margin: EdgeInsets.zero,
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 88),
         child: Padding(
@@ -114,6 +119,7 @@ class _FeatureCard extends StatelessWidget {
                     Text(
                       subtitle,
                       style: textTheme.bodyMedium?.copyWith(
+                        height: 18 / 14,
                         color: colors.onSurfaceVariant,
                       ),
                     ),

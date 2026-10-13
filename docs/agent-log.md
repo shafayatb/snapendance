@@ -291,3 +291,14 @@ Conventions:
 - **Checked:** `dart format`, `flutter analyze`, `flutter build apk --debug`; on the Galaxy A04s
   (Android 14) Home matches H1 in font, colors, spacing, card, and status bar. No Flutter tests
   in this step (pure styling, per the plan).
+- **Separate review (read-only agent):** changes requested, Minor findings only, all confirmed
+  against the code and engine source. Fixed: edge-to-edge applies only from API 29 and nav-bar
+  styling only from API 26 (`PlatformPlugin.java`), so the comment was corrected and the nav bar
+  uses the opaque page color; the global card theme no longer sets elevation/shape (it would have
+  broken later `Card.outlined` rows); secondary/tertiary roles map to the primary tokens instead
+  of M3's teal defaults, with `onErrorContainer` set; card subtitle line height 18 px as in H1.
+  Deferred: the mono text style (Upload Manager task).
+- **Decided by the developer:** keep the outlined pin. Plan D7 amended (rounded, or outlined
+  where the design glyph is unfilled) and the icon deviation added to `docs/design/README.md`.
+- **Checked after fixes:** `dart format`, `flutter analyze`, `flutter build apk --debug`; Home
+  unchanged on the Galaxy A04s. Android 7-9 bar behavior is reasoned from engine source, not run.
