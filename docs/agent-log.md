@@ -342,3 +342,42 @@ Conventions:
   BOM compatibility claim against Google Maven, the resolved versions, and the packaged manifest.
   Fixed both optional findings: the sync note in `app_tokens.dart` now names the third copy of
   the background color (`colors.xml`), and the plan's file list includes `colors.xml`.
+
+### Task 01, step 4: Compose theme and attendance top bar
+
+> run @FRESH_PROMPT.md
+
+- **Claude, test first:** added the instrumented test setup (`testInstrumentationRunner`,
+  Compose `ui-test-junit4` from the BOM, `androidx.test:runner` 1.7.0, `androidx.test.ext:junit`
+  1.3.0, `ui-test-manifest` debug only) after checking AAR metadata on Google Maven: the
+  `androidx.test` artifacts have no compileSdk/AGP constraints, Compose test 1.11.4 needs
+  compileSdk 35 / AGP 8.6.0. `AttendanceActivityTest` taps the node with content description
+  "Navigate back" and asserts the Activity is finishing. Against the empty screen it failed as
+  expected on the Galaxy A04s: `Expected exactly '1' node but could not find any node that
+  satisfies: (ContentDescription = 'Navigate back')`. The v1 `createAndroidComposeRule` is
+  deprecated in 1.11.4, so the test uses the `junit4.v2` rule.
+- **Claude, implementation:** `AttendanceTokens.kt` (same token names and values as
+  `app_tokens.dart`), `AttendanceTheme.kt` (light `MaterialTheme` with the same role mapping, the
+  design type scale in IBM Plex Sans, `StatusColors` data class in a `CompositionLocal`), IBM
+  Plex TTFs copied to `res/font/`, `ic_arrow_back.xml` from Google's Material Symbols Rounded
+  Android vectors (only the AppCompat tint attribute removed), title and content description in
+  `strings.xml`, and the A1 top bar (M3 `TopAppBar`, which handles the status-bar inset) with an
+  empty `Scaffold` body and a themed `@Preview`. The arrow calls `finish()` through the
+  Activity's `onNavigateBack` callback; system Back is not overridden. `enableEdgeToEdge` uses
+  light system-bar styles so icons stay dark even in system dark mode; per the activity 1.13.0
+  source, the black dark scrim applies only to the nav bar on API 24-25.
+- **Checked:** the test passes; a mutation (`onNavigateBack = {}`) failed it with
+  `AttendanceActivity should finish`, then was restored. `assembleDebug`,
+  `connectedDebugAndroidTest`, `flutter build apk --debug`, `flutter analyze`, `git diff --check`.
+  A1 on the Galaxy A04s (Android 14), seen through a throwaway instrumented test that held the
+  screen open (deleted afterwards): back arrow and "Attendance" in Plex SemiBold, navy on
+  `#EEF2F7`, dark status-bar icons, transparent gesture nav bar. Not seen: Android 7-13 bar
+  behavior (reasoned from source), and the screen opened from Flutter (step 5).
+- **Separate review (read-only agent):** approved, no Critical or Major findings; it confirmed
+  all six implementation claims (AAR metadata, required `@OptIn`, edge-to-edge behavior by API
+  level, v1 rule deprecation, vector source, byte-identical fonts) and ran the device test four
+  times. Fixed its Minor finding: Compose color roles the design does not set fell back to M3's
+  purple defaults while Flutter falls back to `surface`/`onSurface`/`onPrimary` (checked in
+  Flutter's `color_scheme.dart`); those roles are now set explicitly. Also took its optional
+  notes: a wrapped KDoc line, an accurate `ui-test-manifest` comment, and `colors.xml` naming
+  `AttendanceTokens.kt`. Re-checked with `assembleDebug` and `connectedDebugAndroidTest`.

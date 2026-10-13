@@ -24,6 +24,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -48,6 +49,15 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Instrumented Compose UI tests (run on a device with connectedDebugAndroidTest).
+    androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    // Registers the empty Activity that createComposeRule() hosts content in (screen tests in
+    // tasks 02-03); the step 4 test runs inside AttendanceActivity instead. Debug manifest only.
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
 kotlin {
