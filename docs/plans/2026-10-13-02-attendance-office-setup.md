@@ -2,7 +2,8 @@
 
 **Task:** [02-attendance-office-setup](../tasks/02-attendance-office-setup.md) ·
 **Branch:** `feature/02-attendance-office-setup` (from `develop`, plus `5a9dfe7` docs) ·
-**Status:** approved 2026-10-13
+**Status:** approved 2026-10-13; done 2026-10-13 (steps 8-9 added from the device run, 10-11
+from the task review)
 
 ## Current state (inspected 2026-10-13)
 
@@ -25,11 +26,11 @@
 | D2 | How a fix is obtained | Not a single `getCurrentLocation` call: `LocationSource.fixes()` is a `callbackFlow` of high-accuracy updates (1 s interval), and the ViewModel takes the **first fix the policy accepts within 15 s**. A first fix that is cached or coarse no longer fails the attempt, A2's "accuracy ±18 m · improving" line shows real values, and task 03 reuses the same flow for live distance. The task file's "single current fix" wording is updated to match. |
 | D3 | Fix policy | Pure `LocationFixPolicy`: accepted when accuracy ≤ 25 m and age ≤ 30 s (both inclusive); a fix without accuracy counts as inaccurate. Age uses the fix's elapsed-realtime timestamp, not wall time. Mock-provider fixes are accepted (emulator verification relies on them); recorded as a limitation. |
 | D4 | Failure feedback | One-off events through a `Channel`, shown as snackbars with **Retry**: no fix in 15 s; best fix too inaccurate ("GPS accuracy ±40 m; ±25 m or better is needed"); only stale fixes; storage write error. If services turned off during the attempt, the timeout shows the A8 blocker instead. Nothing is saved on any failure; a previously saved office stays shown. |
-| D5 | Permission flow | Ask only when **Set Office Location** is tapped (A1 shows the button enabled before any prompt). Request `FINE` + `COARSE` together (required on Android 12+). Result: precise → fetch; coarse only → A7; denied with rationale available → A6 with "Allow location" (asks again); denied without rationale → A6 with "Open app settings". Permanence is learned from the request result, so it is not persisted; after a restart the next tap re-learns it without showing a dialog. |
+| D5 | Permission flow | Ask only when **Set Office Location** is tapped (A1 shows the button enabled before any prompt). Request `FINE` + `COARSE` together (required on Android 12+). Result: precise → fetch; coarse only → A7; denied with rationale available → A6 with "Allow location" (asks again); denied without rationale → A6 with "Open app settings". Permanence is learned from the request result, so it is not persisted; after a restart the next tap re-learns it without showing a dialog. Accepted limitation (task review): dismissing the dialog by tapping outside also reads as "won't ask again" on Android 11+, so A6 offers app settings although the system would still ask; recovery still works. |
 | D6 | Who does what | The ViewModel owns state and decisions and knows nothing about Activities. The screen reports permission status (`checkSelfPermission`) on every resume and sends request results; it launches the permission request, app settings, and the location-settings resolution (falling back to `ACTION_LOCATION_SOURCE_SETTINGS`) when the ViewModel asks or a recovery button is tapped. Services on/off comes from `LocationSource.isLocationEnabled()`, checked on resume and before each attempt. |
 | D7 | Blockers (A6-A8) | Shown in the area below the card (where task 03's ring goes), and they disable Set Office Location. Services off and approximate-only are shown whenever true on resume; the permission blocker only after a denial (first run shows A1). If an office is saved, the card keeps showing it under a blocker; the "Location unavailable" panel is used only when nothing is saved. |
 | D8 | Re-setting the office | Allowed, with a confirmation dialog when an office is already saved: "Replace saved office?" / "Your current GPS position will replace the saved office." / Cancel, Replace. The overwrite is not undoable and the outlined button stays prominent, so one tap should not replace it. Not in the design; recorded as a deviation. |
-| D9 | Lifecycle | The fetch runs in `viewModelScope`, so rotation does not restart it. It is cancelled on `ON_STOP` (foreground-only location; background updates are throttled) and the card returns to its previous content silently. Taps while a fetch runs are ignored (and the button is disabled). |
+| D9 | Lifecycle | The fetch runs in `viewModelScope`, so rotation does not restart it. It is cancelled on `ON_STOP` (foreground-only location; background updates are throttled) and the card returns to its previous content silently. Taps while a fetch runs are ignored (and the button is disabled). Amended 2026-10-13: rotation did cancel the fetch (recreation passes `ON_STOP`); the screen is locked to portrait (step 8). |
 | D10 | Storage | Preferences DataStore, one file `office_location`, through the official `preferencesDataStore` delegate (one instance per process). Keys: latitude, longitude (double), accuracy (float), saved-at epoch millis (long). A read error surfaces as "Couldn't load the saved office location." and the office shows as not set. |
 | D11 | Wiring and tests | No DI library: a `viewModelFactory` in `AttendanceActivity` builds `FusedLocationSource`, `DataStoreOfficeStore`, and the clocks. `OfficeStore` is an interface only because ViewModel tests need a failing fake. JVM unit tests with JUnit 4 and `kotlinx-coroutines-test` (no Turbine/AssertK: state is asserted through `uiState.value`, events by collecting the channel). The store test runs against a real file-backed DataStore in a temp folder. |
 | D12 | Saved-time format | "Today, 08:41 AM", "Yesterday, 08:41 AM", or "12 Oct, 08:41 AM", using the device's 12/24-hour setting. Coordinates at 4 decimals (about 11 m) in IBM Plex Mono, accuracy as "±6 m". |
@@ -92,10 +93,28 @@ android/app/src/test/kotlin/.../attendance/       LocationFixPolicyTest, DataSto
 7. **Blockers and recovery.** A6-A8 panel, app settings and location-settings resolution, resume
    re-check wiring. Verified on device.
    `feat(attendance): show location blockers with recovery actions`
-8. **Verification and records.** Device run (below), task file wording (D2), design deviations
-   (D5 label, D7 panel, D8 dialog), backlog status, review agent, `docs/agent-log.md`,
-   `FRESH_PROMPT.md`.
-   `docs(tasks): record task 02 verification`
+8. **Portrait lock** (added from the device run). Rotation recreated the Activity, its `ON_STOP`
+   sent `ScreenStopped`, and a running fetch was cancelled, against D9. The user chose to lock
+   `AttendanceActivity` to portrait for now and defer the proper fix (backlog "Deferred
+   improvements"). Verified on the phone.
+   `fix(attendance): lock the attendance screen to portrait`
+9. **Wait for the saved office to load** (added from the device run). Before DataStore's first
+   read, a null office looked like "none saved": the card showed A1 and a tap could replace the
+   saved office without the D8 confirmation. `isOfficeLoaded` disables Set Office Location and
+   shows a loading panel until then. Test first (JVM).
+   `fix(attendance): wait for the saved office before allowing Set Office Location`
+10. **Review fixes: permission and store robustness** (added from the task review). One permission
+    request per open dialog (a second one got an empty answer and lost the real one); a save
+    after a failed read is shown; a corrupt file is replaced; one fetch per Replace confirm.
+    Tests first (JVM).
+    `fix(attendance): ask for location once per dialog and recover from unreadable office data`
+11. **Review fixes: lint and copy** (added from the task review). Locale read from the
+    configuration (`lintDebug` error `NonObservableLocale`); a rejected accuracy is rounded up.
+    `fix(attendance): read the locale observably and round rejected accuracy up`
+12. **Verification and records.** Device run (below), task file wording (D2), design deviations
+    (A6/A7 recovery variants, saved office under a blocker, replace dialog, loading panel),
+    backlog status, review agent, `docs/agent-log.md`, `FRESH_PROMPT.md`.
+    `docs(tasks): record task 02 verification`
 
 ## Verification
 
@@ -112,12 +131,21 @@ Device:
   recovers), no fix within 15 s, rotation during fetch, background during fetch, process death via
   "Don't keep activities" / `adb shell am kill`.
 
+As run (2026-10-13): permissions, approximate, and services off on the phone (its system dialogs);
+emulator test providers (`cmd location providers`) instead of `adb emu geo fix` for no-fix and
+mock fixes; process death with `run-as <package> kill`, since `am kill` left the process running
+on Android 16. Rotation is covered by the step 8 lock rather than surviving recreation.
+
 ## Risks
 
 - `lifecycle` 2.11 or `datastore` 1.2 may require compileSdk 37; fall back to the newest line that
-  passes `checkDebugAarMetadata`, as with the Compose BOM in task 01.
+  passes `checkDebugAarMetadata`, as with the Compose BOM in task 01. As built: lifecycle 2.10.0
+  (2.11.0 failed `checkDebugAarMetadata`: compileSdk 37, AGP 9.1), datastore 1.2.1,
+  `play-services-location` 21.4.0, `kotlinx-coroutines-test` 1.9.0 (matches the resolved
+  coroutines core).
 - Emulator mock locations may report no accuracy or a fixed accuracy; the policy treats missing
   accuracy as inaccurate, so the emulator run sets accuracy explicitly or uses the extended
   controls.
 - Indoors, a ±25 m fix may take longer than 15 s on some phones; the message says to retry near a
-  window. The thresholds stay as approved.
+  window. The thresholds stay as approved. Seen on the Galaxy A04s: ±27-44 m at a desk, ±17 m near
+  a window.

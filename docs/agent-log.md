@@ -534,3 +534,118 @@ Conventions:
     share a task because the launch has no `NEW_TASK`). Both would change app code in a
     records-only step; they are left for a later native task.
   - Re-checked: `git diff --check develop` is clean.
+
+## 2026-10-13 · Task 02: attendance office setup (Claude Code)
+
+### Task 02: set the office location · Essential
+
+> run @FRESH_PROMPT.md
+
+Task 02 was chosen from a question ("02 Office setup"). The plan
+(`docs/plans/2026-10-13-02-attendance-office-setup.md`, decisions D1-D12) was approved with:
+
+> approved.
+
+Each step then started from a fresh session or after a commit:
+
+> committed. continue with step 2
+
+> start task 2 step 4
+
+> start task 2 step 8
+
+> committed, continue with the records step
+
+> committed, continue with step 11
+
+- **Approach:** native Kotlin/Compose, test first per step. A pure fix policy (≤ 25 m and ≤ 30 s,
+  inclusive; no accuracy means inaccurate); a Preferences DataStore office store; a Fused Location
+  Provider source streaming 1 s high-accuracy updates; `AttendanceViewModel` saving the first
+  accepted fix within 15 s, with one-off events for failures; the Step 1 card (A1, A2, P2); and the
+  A6-A8 blocker panel with recovery (ask again, app settings, Play services "turn on location").
+- **Decisions beyond the plan:**
+  - Step 3: if location updates cannot start (no Play services, permission revoked), the flow fails
+    and the attempt reports "no fix" at once instead of waiting 15 s.
+  - Step 7: on the phone, one "Keep approximate location" was permanent, so A7 also gets an "Open
+    app settings" variant (`ApproximateOnly(canAskAgain)`).
+  - Versions: lifecycle 2.10.0 (2.11.0 failed `checkDebugAarMetadata`: compileSdk 37, AGP 9.1);
+    `kotlinx-coroutines-test` 1.9.0 to match the app's resolved coroutines.
+- **Test-first evidence** (JVM, `testDebugUnitTest`; 35 tests before the review fixes, 40 after):
+  - Fix policy (5): the rejection tests failed on an accept-all stub; changing `>` to `>=` on
+    accuracy made `fixAtBothLimitsIsAccepted` fail (restored).
+  - Store (2): read-back failed on a placeholder; writing longitude into the latitude key made it
+    fail (restored). Runs against a real DataStore file, closed and reopened.
+  - ViewModel (28): 12 of the first 13 failed on an empty ViewModel; six mutations (no cancel on
+    stop, no in-flight guard, 30 s timeout, worst accuracy reported, no replace confirmation, no
+    stale message) were each caught (restored). Step 5's permission/services tests failed on their
+    assertions first; three that passed on stubs were tightened to assert the blocker shows before
+    recovery.
+- **Problems found on the device (step 8 run), each fixed as its own step:**
+  - Rotating during a fetch cancelled it: recreation passes `ON_STOP`, which sends
+    `ScreenStopped`. Captures before/after showed "Getting GPS fix… ±33 m" turn into A1 and the
+    location icon go out. The user chose:
+
+    > Lock the orientation for now and keep it as improvements. if we get time then we will optimise it
+
+    `AttendanceActivity` is portrait-only; the proper fix is in the backlog's deferred
+    improvements. Re-run: forced landscape mid-fetch, same Activity record, fetch continued.
+  - On a cold start the card showed "No office location saved" and the filled button until
+    DataStore's first read (still wrong 13.3 s after the tap on the emulator, right by 14.2 s;
+    under 0.8 s on the phone), and a tap in that window would skip the replace confirmation. The
+    user chose "Fix now as its own step". `isOfficeLoaded` gates the tap and shows a loading
+    panel. Test first: `setOfficeWaitsUntilTheSavedOfficeHasLoaded` failed with `expected null,
+    but was:<FixAttempt(latestAccuracyMeters=null)>`, then passed.
+- **Device run** (manual; debug APK):
+  - Galaxy A04s (SM-A047F), Android 14, fresh install: A1 on first run; deny once → A6 "Allow
+    location"; deny again → A6 "Open app settings"; approximate-only granted in app settings → A7
+    on return without a restart; "Keep approximate location" → A7 "Open app settings"; precise
+    turned on in settings → A1 on return. Location off (shell) → a tap shows A8; "No, thanks" on
+    the Play services dialog keeps A8; location on, then "Turn on location" clears it (the
+    already-on path). The dialog's "Turn on" was not tapped, because it would also switch on
+    Google Location Accuracy on the developer's phone.
+  - Same phone, real GPS: at a desk the best fix was ±27 m, so the attempt failed with "GPS
+    accuracy ±27 m; ±25 m or better is needed." and Retry, saving nothing. Near a window the
+    developer saved a ±17 m fix ("Today, 23:11", the phone's 24-hour setting); it survived a
+    force-stop and cold reopen. Coordinates are not recorded here.
+  - Emulator (Pixel AVD, Android 16, Play services): silent test providers → "Couldn't get a GPS
+    fix…" with Retry after 15 s, nothing saved; the location log shows the request added and
+    removed 15 s later. Home during a fetch → cancelled silently, request removed at Home. Mock
+    fix at ±6 m saved and shown; process death (`run-as … kill`; `am kill` left the process
+    running) restored the screen with the office; replace dialog: Cancel kept it, Replace saved a
+    new ±8 m fix; force-stop and cold reopen showed it. Test providers removed afterwards.
+  - Not seen on a device: the stale-fix message, the save/load storage errors (JVM tests only),
+    the loading panel itself (too brief on the phone; the emulator's recording stayed on the
+    Flutter splash), and the system location-settings fallback when the Play services dialog
+    cannot be shown.
+- **Task review (one read-only agent, whole task diff): approved with minor fixes.** No Critical or
+  Major findings. It confirmed the fix policy, the 15 s attempt and update removal, the in-flight
+  guard, the A6/A7 variants, the services checks, event delivery, no Activity leaks, and both
+  device-run fixes. Each finding was checked against the code; the user chose "Fix 1-6 in two
+  steps":
+  - Fixed (step 10): a double tap sent a second permission request while the dialog was open; the
+    system answered it empty ("Can request only one set of permissions at a time"), A6 appeared
+    behind the dialog, and the real grant was lost, so no fetch started. Reproduced on the phone
+    before the fix; after it, one request and the grant goes straight to the fetch.
+  - Fixed (step 10): after a failed read the store was no longer observed, so a later save never
+    showed; a corrupt file failed every save. Now a save sets the office on screen, and a corrupt
+    file is replaced with an empty one. Also covers the review's test-gap finding.
+  - Fixed (step 10): two Replace confirms could start two location collections.
+  - Fixed (step 11): `lintDebug` error `NonObservableLocale` (locale read in a composable); a
+    rejected 25.1-25.49 m read "±25 m; ±25 m or better is needed" (now rounded up).
+  - Step 10 tests, each failing first: `secondTapWhileThePermissionDialogIsOpenDoesNotAskAgain`
+    (two requests instead of one), `allowLocationAsksOnceUntilTheDialogAnswers` (no-op stub),
+    `officeSavedAfterAFailedReadIsShown` (`null` office), `confirmingReplaceTwiceStartsOneRequest`
+    (`expected:<1> but was:<2>`), `corruptFileReadsAsNoOfficeAndCanBeSavedOver`
+    (`CorruptionException`). Step 11 had no test: lint is the check (1 error before, 0 after), and
+    the rounding is a one-call change; the rounded-up message was not seen on a device.
+  - Accepted, not changed: dismissing the permission dialog by tapping outside reads as "won't ask
+    again" on Android 11+ (A6 offers app settings; recovery still works). Recorded under plan D5.
+- **Checks at the end:** `testDebugUnitTest` 40/40, `lintDebug` 0 errors (7 expected warnings: held
+  versions, the portrait lock, the template's `drawable-v21`), `assembleDebug`, `flutter build apk
+  --debug`, `connectedDebugAndroidTest` 1/1 on the A04s (before steps 10-11, which change no code
+  it covers), `git diff --check` clean.
+- **Records:** plan steps 8-12 and the D5/D9 amendments, task file wording (D2, portrait note),
+  backlog status, approved decision, and "Deferred improvements", design deviations (A6/A7
+  recovery variants, saved office under a blocker, replace dialog, loading panel).
+- **Git:** `feature/02-attendance-office-setup`, one commit per step (`841a3a0`..`8ebf9f1`, plus
+  this records step), all committed by the user; merge into `develop` is the user's.

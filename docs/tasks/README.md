@@ -16,7 +16,7 @@ task file in the same task so this folder stays the current scope record.
 | # | Task | Depends on | Status |
 |---|------|------------|--------|
 | 01 | [App shell and native attendance entry](01-app-shell-native-bridge.md) | - | Done |
-| 02 | [Attendance: set office location](02-attendance-office-setup.md) | 01 | In progress |
+| 02 | [Attendance: set office location](02-attendance-office-setup.md) | 01 | Done |
 | 03 | [Attendance: live distance and marking](03-attendance-distance-marking.md) | 02 | Not started |
 | 04 | [Camera preview and lifecycle](04-camera-preview.md) | 01 | Not started |
 | 05 | [Camera zoom, lens, and flash controls](05-camera-zoom-controls.md) | 04 | Not started |
@@ -31,8 +31,8 @@ Status values: `Not started`, `Planned` (plan approved), `In progress`, `In revi
 Update a task's status here as it moves; task files do not carry status.
 Tasks 02-03 (native) and 04-07 (Flutter camera) are independent tracks after task 01.
 
-Task 01 is done (2026-10-13). No next task is assigned yet; the root `FRESH_PROMPT.md` says to
-await one.
+Tasks 01-02 are done (2026-10-13). No next task is assigned yet; the root `FRESH_PROMPT.md` says
+to await one.
 
 ## Approved decisions
 
@@ -50,12 +50,12 @@ await one.
 | 2026-10-12 | Attendance: strict ≤ 50 m, no hysteresis; usable fix ≤ 30 s old and ≤ 25 m accuracy; coordinates panel, no map. |
 | 2026-10-12 | Uploads: grouped by batch; retry limit 5; mock timeout 30 s; mock simulation sheet from the camera settings icon. |
 | 2026-10-13 | Task 01: one `navigation` channel method `openAttendance`; IBM Plex bundled in Flutter and Android; Material Icons Rounded (Flutter) and Material Symbols Rounded vectors (Compose). See the task 01 plan, D1-D2 and D6-D7. |
+| 2026-10-13 | Task 02: Fused Location Provider; first fix accepted within 15 s from a stream of updates; replacing a saved office needs confirmation; Preferences DataStore; the attendance screen is portrait-only for now. See the task 02 plan, D1-D2, D8, D10, and step 8. |
 
 ## Open decisions and owning task
 
 | Decision | Task |
 |----------|------|
-| Location provider (fused vs. platform), re-setting the office | 02 |
 | Camera permission approach; how the device exposes ultra-wide (lens vs. zoom < 1.0) | 04 |
 | Lens button set, flash modes, whether the front-camera flip is included | 05 |
 | Batch model (open batch, freeze on submit), queue schema, storage location | 07 |
@@ -63,3 +63,11 @@ await one.
 | Remove action for missing-file items; Pause All inclusion | 09 |
 | Work scheduling (unique one-off + periodic fallback), connectivity indicator semantics | 10 |
 | Release signing and APK hosting | 11 |
+
+## Deferred improvements
+
+Found during a task, deliberately left for later. Pick one up only when the user assigns it.
+
+| Found in | Improvement | Why deferred |
+|----------|-------------|--------------|
+| 02 | Keep a running GPS fetch across Activity recreation (send `ScreenStopped` only when not `isChangingConfigurations`), then remove the portrait lock. Until then, a dark-mode, font-size, locale, or split-screen change still cancels a fetch silently, and Android 16 ignores the lock on screens ≥ 600 dp wide. | User chose the portrait lock for the deadline. |
