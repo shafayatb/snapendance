@@ -302,3 +302,11 @@ Conventions:
   where the design glyph is unfilled) and the icon deviation added to `docs/design/README.md`.
 - **Checked after fixes:** `dart format`, `flutter analyze`, `flutter build apk --debug`; Home
   unchanged on the Galaxy A04s. Android 7-9 bar behavior is reasoned from engine source, not run.
+
+> ignore the UI differences unless i tell you to. don't need to be perfect for this assignment task
+
+- **Decided by the developer:** small visual differences from the design are not pursued unless
+  requested; reviews no longer report them.
+- **Separate review of the fixes (read-only agent):** approved, no findings; it confirmed the
+  engine API gating, the per-card elevation/shape, and the color-role mapping. `dart format` and
+  `flutter analyze` clean.
