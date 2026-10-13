@@ -14,6 +14,23 @@ class HomeScreen extends StatelessWidget {
 
   final AttendanceLauncher attendanceLauncher;
 
+  Future<void> _openAttendance(BuildContext context) async {
+    try {
+      await attendanceLauncher.open();
+    } on AttendanceLaunchException {
+      // Home may have been replaced while Android was answering.
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        // Replaces, rather than queues behind, a message from an earlier tap.
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't open Attendance. Please try again."),
+          ),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -57,7 +74,7 @@ class HomeScreen extends StatelessWidget {
                   icon: Icons.location_on_outlined,
                   title: 'Attendance',
                   subtitle: 'Office setup and check-in',
-                  onTap: attendanceLauncher.open,
+                  onTap: () => _openAttendance(context),
                 ),
               ),
             ],

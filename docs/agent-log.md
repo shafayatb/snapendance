@@ -420,3 +420,60 @@ Conventions:
   start it", since `startActivity` only queues the launch). Its Optional note is for step 6: the
   `onTap: attendanceLauncher.open` tear-off drops the future and must become an awaited, caught
   call. Re-checked with `dart format`, `flutter analyze`, `flutter test`, `git diff --check`.
+
+### Task 01, step 6: feedback when attendance cannot open
+
+> run @FRESH_PROMPT.md
+
+- **Claude, test first:** two widget tests in `test/app/home/home_screen_test.dart`, using the
+  real Home and the real `AttendanceLauncher`. (1) The method handler throws
+  `PlatformException(code: 'ATTENDANCE_UNAVAILABLE')`: tapping the card shows "Couldn't open
+  Attendance. Please try again.", and a second tap reaches the handler again. (2) No handler: the
+  first try (`setMockMethodCallHandler(channel, null)`) never raised `MissingPluginException`,
+  because `TestDefaultBinaryMessenger.send` forwards to the real engine when nothing is mocked and
+  no reply arrives under fake async. Android's `DartMessenger` sends an empty reply when a channel
+  has no handler, and `MethodChannel` turns a null reply into `MissingPluginException`, so the test
+  uses a binary `setMockMessageHandler` that returns null. Expected failures before the
+  implementation: uncaught `PlatformException(ATTENDANCE_UNAVAILABLE, null, null, null)` and
+  uncaught `MissingPluginException(No implementation found for method openAttendance on channel
+  com.shafayatb.snapendance/navigation)`, each followed by `Found 0 widgets with text "Couldn't
+  open Attendance. Please try again."`.
+- **Claude, implementation:** `AttendanceLauncher.open()` turns `PlatformException` and
+  `MissingPluginException` into `AttendanceLaunchException`, which keeps the cause for debugging.
+  Home replaces the step 5 tear-off, which dropped the future, with `_openAttendance(context)`.
+  That method awaits the launch, catches `AttendanceLaunchException`, checks `context.mounted`,
+  and replaces any visible SnackBar with the message. Only a SnackBar call is involved; there is
+  no stored state and no Cubit (D4). `MainActivity` catches `ActivityNotFoundException` from
+  `startActivity` and replies with `result.error("ATTENDANCE_UNAVAILABLE", …)`. Other exceptions
+  are left to the engine: its `MethodChannel.java` logs them and replies with an `"error"`
+  envelope, so Dart still shows the message. Nothing tests the Kotlin path automatically (the plan
+  says so); it is reasoned from the code.
+- **Mutation checks**, each restored afterwards:
+  - No `MissingPluginException` catch: the no-handler test fails.
+  - No `PlatformException` catch: the handler-error test fails.
+  - Home back to `onTap: attendanceLauncher.open`: both tests fail with an uncaught
+    `AttendanceLaunchException`.
+  - Only the first failure shows the SnackBar (the reviewer's mutation, run after the fix below):
+    the retry test fails.
+- **Checked:**
+  - `dart format`, `flutter analyze`, `flutter test` (3/3), `flutter build apk --debug`,
+    `assembleDebug`, `git diff --check`.
+  - `connectedDebugAndroidTest` passed (1/1).
+  - On the Galaxy A04s (Android 14), after reinstalling the debug APK: the card opens A1; the
+    arrow and system Back each return to Home (two round trips); the task holds only
+    `MainActivity` (`sz=1`); logcat shows no crash or channel errors.
+  - The failure SnackBar was seen only in widget tests. A real launch failure cannot be triggered
+    on the device without changing app code.
+- **Separate review (read-only agent): approved with minor fixes.** No Critical or Major
+  findings. It confirmed the engine/SDK claims, the catch widths, `result.success` inside the
+  `try`, the `mounted` guard, and that nothing beyond step 6 was added.
+  - Fixed its Minor finding: in the retry test, the first SnackBar was still on screen at the last
+    check (`pumpAndSettle` does not run the 4 s display timer). As a result, a "show only once"
+    regression passed. The test now waits for the first message to time out, asserts it is gone,
+    then expects a new one.
+  - Not taken:
+    - The test for a missing handler does not tap a second time, because the retry test already
+      covers the same catch path.
+    - Replacing a visible SnackBar is not tested; it is a small UX choice, not a requirement.
+    - `tearDown` keeps both handler resets for clarity.
+  - Re-checked with `dart format`, `flutter analyze`, `flutter test`, and `git diff --check`.
