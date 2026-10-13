@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Design token "background" (docs/design); same value as AppColors.background in
+         lib/app/theme/app_tokens.dart. -->
+    <color name="attendance_background">#EEF2F7</color>
+</resources>

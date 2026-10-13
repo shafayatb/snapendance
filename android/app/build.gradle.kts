@@ -1,5 +1,6 @@
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.plugin.compose")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -32,6 +33,21 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // The native attendance screen is Jetpack Compose.
+    buildFeatures {
+        compose = true
+    }
+}
+
+dependencies {
+    val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
+    implementation(composeBom)
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
 }
 
 kotlin {

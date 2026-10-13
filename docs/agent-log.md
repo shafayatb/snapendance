@@ -310,3 +310,35 @@ Conventions:
 - **Separate review of the fixes (read-only agent):** approved, no findings; it confirmed the
   engine API gating, the per-card elevation/shape, and the color-role mapping. `dart format` and
   `flutter analyze` clean.
+
+### Task 01, step 3: Compose enabled, empty native screen
+
+> run @FRESH_PROMPT.md
+
+- **Claude:** added the Compose compiler plugin `org.jetbrains.kotlin.plugin.compose` 2.3.20
+  (matches KGP) in `settings.gradle.kts` and `:app`, `buildFeatures { compose = true }`, the
+  Compose BOM, `activity-compose` 1.13.0, `ui`, `material3`, `ui-tooling-preview`, and
+  `ui-tooling` (debug only). Added `AttendanceActivity` (`ComponentActivity` + `setContent`)
+  with an empty `AttendanceScreen`, registered with `exported="false"`, `singleTop`, and the
+  same empty task affinity as `MainActivity`. The application has no theme, so a theme-less
+  Activity would show the platform action bar: added `AttendanceTheme`
+  (`Theme.Material.Light.NoActionBar`, window background `#EEF2F7` from a new
+  `attendance_background` color). Edge-to-edge is left for step 4 with the top bar.
+- **Problem:** the planned BOM `2026.09.00` failed `checkDebugAarMetadata`: Compose ui 1.12.x
+  (BOMs `2026.08.00`+) needs AGP 9.1.0 and compileSdk 37, while the Flutter template pins AGP
+  9.0.1 and compileSdk 36. Claude checked the AAR metadata on Google Maven: ui 1.11.4 needs
+  compileSdk 35 / AGP 8.6.0.
+- **Decided by the developer:** use BOM `2026.06.01` (ui 1.11.4, material3 1.4.0) rather than
+  upgrade the toolchain. Plan D11 amended.
+- **Plan risk resolved:** the Compose plugin applies alongside the implicitly applied KGP; no
+  explicit `kotlin-android` was needed.
+- **Checked:** `./gradlew :app:assembleDebug`, `flutter build apk --debug`, `flutter analyze`,
+  `git diff --check`; `aapt2` shows the packaged Activity attributes and theme. On the Galaxy A04s
+  (Android 14) the debug APK installs and the Flutter Home launches unchanged. `am start` of
+  `AttendanceActivity` from the shell is denied ("not exported"), so the empty screen itself
+  was not seen on the device; it has no entry point until step 5. No tests in this step (build
+  configuration and an empty screen, per the plan).
+- **Separate review (read-only agent):** approved, no Critical or Major findings; it confirmed the
+  BOM compatibility claim against Google Maven, the resolved versions, and the packaged manifest.
+  Fixed both optional findings: the sync note in `app_tokens.dart` now names the third copy of
+  the background color (`colors.xml`), and the plan's file list includes `colors.xml`.

@@ -2,6 +2,8 @@ import 'package:flutter/painting.dart';
 
 // Light design tokens from docs/design/Design System.dc.html (script renderVals()).
 // AttendanceTokens.kt holds the same names and values for Compose; change both together.
+// The Android window background (attendance_background in android/app/src/main/res/values/
+// colors.xml) repeats `background`.
 
 abstract final class AppColors {
   static const background = Color(0xFFEEF2F7);

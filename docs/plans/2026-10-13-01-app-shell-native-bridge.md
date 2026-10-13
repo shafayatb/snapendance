@@ -28,7 +28,7 @@
 | D8 | Token consistency | Two hand-written token files with identical token names and values, each pointing to `docs/design/Design System.dc.html`: `lib/app/theme/app_tokens.dart` and `.../attendance/ui/theme/AttendanceTokens.kt`. No code generation. A change to one requires the same change to the other (noted in both files). |
 | D9 | Theme scope | Light scheme only (camera dark scheme is added with the camera task). Colors, status colors (`ThemeExtension` / `CompositionLocal` data class), type scale, spacing, radius. |
 | D10 | Home copy | Header "Snapendance" + today's date in short form ("Tue, 13 Oct", `intl` `DateFormat('EEE, d MMM')`). Attendance card: `location_on` tile, title "Attendance", static subtitle "Office setup and check-in" (grey, no status dot, because H1's "Office not set" is live native state). Only the Attendance card. |
-| D11 | Compose setup | Plugin `org.jetbrains.kotlin.plugin.compose` 2.3.20 (matches KGP); `buildFeatures { compose = true }`; Compose BOM `2026.09.00` (ui 1.12.1, material3 1.4.0), `activity-compose` 1.13.0, `ui-tooling-preview` (+ `ui-tooling` debug only). `enableEdgeToEdge` with dark status-bar icons; window background `#EEF2F7` to avoid a white flash. |
+| D11 | Compose setup | Plugin `org.jetbrains.kotlin.plugin.compose` 2.3.20 (matches KGP); `buildFeatures { compose = true }`; Compose BOM `2026.06.01` (ui 1.11.4, material3 1.4.0), `activity-compose` 1.13.0, `ui-tooling-preview` (+ `ui-tooling` debug only). Amended 2026-10-13: BOM `2026.08.00`+ (ui 1.12.x) requires AGP 9.1.0 and compileSdk 37; the Flutter template pins AGP 9.0.1 and compileSdk 36, so the newest compatible BOM is used instead of upgrading the toolchain. `enableEdgeToEdge` with dark status-bar icons; window background `#EEF2F7` to avoid a white flash. |
 | D12 | Native test | One instrumented Compose test (`createAndroidComposeRule<AttendanceActivity>`): tapping the back arrow finishes the Activity. Adds `ui-test-junit4`/`ui-test-manifest` and the AndroidX test runner; tasks 02-03 reuse this setup. |
 | D13 | Starter cleanup | Remove `cupertino_icons` and the counter test along with the counter. Launcher label and `MaterialApp.title` become "Snapendance". |
 
@@ -46,6 +46,7 @@ test/app/home/home_screen_test.dart
 android/settings.gradle.kts, android/app/build.gradle.kts
 android/app/src/main/AndroidManifest.xml         label, AttendanceActivity
 android/app/src/main/res/values/styles.xml       AttendanceTheme (window background)
+android/app/src/main/res/values/colors.xml       attendance_background (window background color)
 android/app/src/main/res/font/                   IBM Plex TTFs (lowercase names)
 android/app/src/main/res/drawable/ic_arrow_back.xml
 android/app/src/main/kotlin/com/shafayatb/snapendance/MainActivity.kt
@@ -99,5 +100,6 @@ android/app/src/androidTest/kotlin/com/shafayatb/snapendance/attendance/Attendan
 ## Risks
 
 - The Compose compiler plugin must apply alongside the implicitly applied KGP; step 3 proves it.
-  If it fails, declare `org.jetbrains.kotlin.android` in `:app` explicitly.
+  If it fails, declare `org.jetbrains.kotlin.android` in `:app` explicitly. Resolved in step 3:
+  it applies without the explicit declaration.
 - IBM Plex Sans on Google Fonts is now a variable font; static TTFs come from IBM's own release.
