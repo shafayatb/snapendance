@@ -50,6 +50,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    // JVM unit tests for attendance logic (run with testDebugUnitTest).
+    testImplementation("junit:junit:4.13.2")
+
     // Instrumented Compose UI tests (run on a device with connectedDebugAndroidTest).
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
