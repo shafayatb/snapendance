@@ -7,6 +7,7 @@ import 'package:snapendance/features/camera/data/camera_service.dart';
 import 'package:snapendance/features/camera/presentation/camera_cubit.dart';
 import 'package:snapendance/features/camera/presentation/camera_page.dart';
 import 'package:snapendance/features/camera/presentation/camera_state.dart';
+import 'package:snapendance/features/uploads/data/upload_queue_repository.dart';
 import 'package:snapendance/features/uploads/domain/upload_models.dart';
 import 'package:snapendance/features/uploads/presentation/batch_cubit.dart';
 import 'package:snapendance/features/uploads/presentation/batch_state.dart';
@@ -15,9 +16,12 @@ class MockCameraCubit extends MockCubit<CameraState> implements CameraCubit {}
 
 class MockBatchCubit extends MockCubit<BatchState> implements BatchCubit {}
 
+class MockUploadQueueRepository extends Mock implements UploadQueueRepository {}
+
 void main() {
   late MockCameraCubit cubit;
   late MockBatchCubit batch;
+  late MockUploadQueueRepository uploadQueue;
 
   setUpAll(() {
     registerFallbackValue(Offset.zero);
@@ -29,6 +33,9 @@ void main() {
   setUp(() {
     cubit = MockCameraCubit();
     batch = MockBatchCubit();
+    uploadQueue = MockUploadQueueRepository();
+    when(() => uploadQueue.changes).thenAnswer((_) => const Stream.empty());
+    when(() => uploadQueue.queuedBatches()).thenAnswer((_) async => []);
     when(() => batch.state).thenReturn(const BatchState());
     when(() => batch.capture(any())).thenAnswer((_) async {});
     when(() => batch.submit()).thenAnswer((_) async {});
@@ -53,21 +60,24 @@ void main() {
     when(() => cubit.state).thenReturn(state ?? CameraState(status: status));
     if (batchState != null) when(() => batch.state).thenReturn(batchState);
     await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) => TextButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => MultiBlocProvider(
-                  providers: [
-                    BlocProvider<CameraCubit>.value(value: cubit),
-                    BlocProvider<BatchCubit>.value(value: batch),
-                  ],
-                  child: const CameraView(),
+      RepositoryProvider<UploadQueueRepository>.value(
+        value: uploadQueue,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => MultiBlocProvider(
+                    providers: [
+                      BlocProvider<CameraCubit>.value(value: cubit),
+                      BlocProvider<BatchCubit>.value(value: batch),
+                    ],
+                    child: const CameraView(),
+                  ),
                 ),
               ),
+              child: const Text('Home'),
             ),
-            child: const Text('Home'),
           ),
         ),
       ),
@@ -530,6 +540,16 @@ void main() {
       await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
       expect(find.text('Upload simulation'), findsNothing);
+    });
+
+    testWidgets('the cloud icon opens the Upload Manager', (tester) async {
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      await tester.tap(find.bySemanticsLabel('Upload Manager'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Upload Manager'), findsOneWidget);
+      expect(find.text('Nothing waiting to upload'), findsOneWidget);
     });
   });
 }

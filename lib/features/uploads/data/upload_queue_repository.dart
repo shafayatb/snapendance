@@ -319,6 +319,31 @@ class UploadQueueRepository {
     return (rows.single['count'] as int) > 0;
   }
 
+  /// Manual Retry on a Failed item (plan U10): back to pending with a fresh attempt count.
+  Future<void> retryItem(int id) async {
+    await _db.update(
+      'items',
+      {'status': ItemStatus.pending.name, 'attempts': 0, 'last_error': null},
+      where: 'id = ? AND status = ?',
+      whereArgs: [id, ItemStatus.failed.name],
+    );
+    _changes.add(null);
+  }
+
+  /// Remove on an item whose image is missing (plan U10): deletes its queue record.
+  Future<void> removeItem(int id) async {
+    final rows = await _db.query(
+      'items',
+      columns: ['file_path'],
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (rows.isEmpty) return;
+    await _db.delete('items', where: 'id = ?', whereArgs: [id]);
+    await _files.delete(rows.single['file_path'] as String);
+    _changes.add(null);
+  }
+
   static const _scenarioKey = 'mock_scenario';
 
   Future<MockScenario> mockScenario() async {

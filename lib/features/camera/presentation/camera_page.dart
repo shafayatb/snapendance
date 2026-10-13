@@ -9,6 +9,7 @@ import '../../../app/widgets/dashed_border.dart';
 import '../../uploads/presentation/batch_cubit.dart';
 import '../../uploads/presentation/batch_state.dart';
 import '../../uploads/presentation/simulation_sheet.dart';
+import '../../uploads/presentation/upload_manager_page.dart';
 import '../data/camera_service.dart';
 import '../domain/zoom_presets.dart';
 import 'camera_cubit.dart';
@@ -96,7 +97,14 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     switch (notice.kind) {
       case BatchNoticeKind.batchQueued:
         _showTopMessage(
-          _QueuedCard(count: notice.count),
+          _QueuedCard(
+            count: notice.count,
+            onView: () {
+              _topMessageTimer?.cancel();
+              setState(() => _topMessage = null);
+              Navigator.of(context).push(UploadManagerPage.route());
+            },
+          ),
           const Duration(seconds: 4),
         );
       case BatchNoticeKind.captureFailed:
@@ -292,9 +300,10 @@ class _Toast extends StatelessWidget {
 
 /// C10: shown for 4 s after a batch is submitted.
 class _QueuedCard extends StatelessWidget {
-  const _QueuedCard({required this.count});
+  const _QueuedCard({required this.count, required this.onView});
 
   final int count;
+  final VoidCallback onView;
 
   @override
   Widget build(BuildContext context) {
@@ -342,6 +351,19 @@ class _QueuedCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          TextButton(
+            onPressed: onView,
+            style: TextButton.styleFrom(
+              foregroundColor: CameraColors.bannerAction,
+              minimumSize: const Size(48, 48),
+              textStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.56,
+              ),
+            ),
+            child: const Text('VIEW'),
           ),
         ],
       ),
@@ -668,7 +690,8 @@ class _UploadsButton extends StatelessWidget {
             _RoundButton(
               icon: Icons.cloud_upload_outlined,
               tooltip: 'Upload Manager',
-              onPressed: () {},
+              onPressed: () =>
+                  Navigator.of(context).push(UploadManagerPage.route()),
             ),
             if (pending > 0)
               Positioned(

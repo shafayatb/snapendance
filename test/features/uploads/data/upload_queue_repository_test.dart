@@ -215,4 +215,40 @@ void main() {
     expect(changes, hasLength(2));
     await subscription.cancel();
   });
+
+  test('retry makes a failed item pending again with fresh attempts', () async {
+    final item = await repository.addCapture(await pluginPhoto());
+    await repository.submitOpenBatch();
+    await repository.claimNext(
+      token: 't',
+      now: now,
+      claimFor: const Duration(minutes: 2),
+    );
+    await repository.recordFailure(
+      item.id,
+      't',
+      now,
+      'Rejected',
+      permanent: true,
+    );
+
+    await repository.retryItem(item.id);
+
+    final retried = (await repository.queuedBatches()).single.items.single;
+    expect(retried.status, ItemStatus.pending);
+    expect(retried.attempts, 0);
+    expect(retried.lastError, isNull);
+  });
+
+  test('remove deletes the queue record and any image left', () async {
+    final gone = await repository.addCapture(await pluginPhoto());
+    final kept = await repository.addCapture(await pluginPhoto());
+    await repository.submitOpenBatch();
+
+    await repository.removeItem(gone.id);
+
+    final items = (await repository.queuedBatches()).single.items;
+    expect(items.map((item) => item.id), [kept.id]);
+    expect(File(gone.filePath).existsSync(), isFalse);
+  });
 }
