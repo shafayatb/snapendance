@@ -1,39 +1,173 @@
 package com.shafayatb.snapendance.attendance.ui
 
-import androidx.compose.foundation.layout.Box
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.shafayatb.snapendance.R
+import com.shafayatb.snapendance.attendance.ui.theme.AttendanceSpacing
 import com.shafayatb.snapendance.attendance.ui.theme.AttendanceTheme
+import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-/** Attendance screen (design A1). Only the top bar for now; the body comes with tasks 02-03. */
+/**
+ * Connects [AttendanceScreen] to [viewModel]: collects its state, carries out its events
+ * (permission request, snackbars), and reports the permission result back.
+ */
+@Composable
+fun AttendanceRoot(
+    viewModel: AttendanceViewModel,
+    onNavigateBack: () -> Unit,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    val activity = LocalActivity.current
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        // Read the permission again rather than the result map: it holds only what was asked.
+        viewModel.onAction(
+            AttendanceAction.PermissionResult(
+                permission = context.locationPermission(),
+                shouldShowRationale = activity
+                    ?.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)
+                    ?: false,
+            ),
+        )
+    }
+
+    ObserveAsEvents(viewModel.events) { event ->
+        val message = when (event) {
+            AttendanceEvent.RequestLocationPermission -> {
+                // Fine and coarse together: Android 12+ ignores a request for fine alone.
+                permissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                    ),
+                )
+                return@ObserveAsEvents
+            }
+            AttendanceEvent.NoFix -> resources.getString(R.string.office_error_no_fix)
+            is AttendanceEvent.FixTooInaccurate -> event.bestAccuracyMeters?.let {
+                resources.getString(R.string.office_error_inaccurate, it.roundToInt())
+            } ?: resources.getString(R.string.office_error_inaccurate_unknown)
+            AttendanceEvent.FixStale -> resources.getString(R.string.office_error_stale)
+            AttendanceEvent.OfficeSaveFailed -> resources.getString(R.string.office_error_save)
+            AttendanceEvent.OfficeLoadFailed -> resources.getString(R.string.office_error_load)
+        }
+        // A failed load has nothing to retry; every other message is a failed attempt.
+        val canRetry = event != AttendanceEvent.OfficeLoadFailed
+        scope.launch {
+            // The newest message replaces one still on screen instead of queueing behind it.
+            snackbarHostState.currentSnackbarData?.dismiss()
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = if (canRetry) resources.getString(R.string.office_retry) else null,
+                duration = SnackbarDuration.Long,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.onAction(AttendanceAction.SetOfficeClick)
+            }
+        }
+    }
+
+    AttendanceScreen(
+        state = state,
+        onAction = viewModel::onAction,
+        onNavigateBack = onNavigateBack,
+        snackbarHostState = snackbarHostState,
+    )
+}
+
+/** Attendance screen (design A1, A2, P2). Task 03 adds the distance ring and Mark Attendance. */
 @Composable
 fun AttendanceScreen(
+    state: AttendanceUiState,
+    onAction: (AttendanceAction) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     Scaffold(
         modifier = modifier,
         topBar = { AttendanceTopBar(onNavigateBack = onNavigateBack) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    start = AttendanceSpacing.md,
+                    top = AttendanceSpacing.xxs,
+                    end = AttendanceSpacing.md,
+                    bottom = AttendanceSpacing.md,
+                ),
+            verticalArrangement = Arrangement.spacedBy(AttendanceSpacing.lg),
+        ) {
+            OfficeContextCard(
+                office = state.office,
+                fixAttempt = state.fixAttempt,
+                isBlocked = state.blocker != null,
+                onSetOfficeClick = { onAction(AttendanceAction.SetOfficeClick) },
+            )
+        }
+    }
+
+    if (state.isReplaceConfirmationVisible) {
+        ReplaceOfficeDialog(
+            onConfirm = { onAction(AttendanceAction.ReplaceOfficeConfirm) },
+            onDismiss = { onAction(AttendanceAction.ReplaceOfficeDismiss) },
         )
     }
 }
@@ -58,10 +192,55 @@ private fun AttendanceTopBar(onNavigateBack: () -> Unit) {
     )
 }
 
+/** Plan D8: replacing the saved office cannot be undone, so it is confirmed first. */
+@Composable
+private fun ReplaceOfficeDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.office_replace_title)) },
+        text = { Text(stringResource(R.string.office_replace_body)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.office_replace_confirm)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.office_replace_cancel)) }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+    )
+}
+
+/**
+ * Collects one-off [events] while the screen is at least started, on the main thread without
+ * a dispatch, so an event sent just before a configuration change is not lost.
+ */
+@Composable
+private fun <T> ObserveAsEvents(events: Flow<T>, onEvent: (T) -> Unit) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val currentOnEvent by rememberUpdatedState(onEvent)
+    LaunchedEffect(events, lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            withContext(Dispatchers.Main.immediate) {
+                events.collect { currentOnEvent(it) }
+            }
+        }
+    }
+}
+
+/** The location permission this app holds now. */
+private fun Context.locationPermission(): LocationPermission = when {
+    isGranted(Manifest.permission.ACCESS_FINE_LOCATION) -> LocationPermission.Precise
+    isGranted(Manifest.permission.ACCESS_COARSE_LOCATION) -> LocationPermission.Approximate
+    else -> LocationPermission.None
+}
+
+private fun Context.isGranted(permission: String) =
+    ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
 @Preview(showBackground = true, widthDp = 412, heightDp = 915)
 @Composable
 private fun AttendanceScreenPreview() {
     AttendanceTheme {
-        AttendanceScreen(onNavigateBack = {})
+        AttendanceScreen(state = AttendanceUiState(), onAction = {}, onNavigateBack = {})
     }
 }

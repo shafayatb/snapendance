@@ -58,6 +58,8 @@ dependencies {
 
     // AttendanceViewModel and viewModelScope.
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.10.0")
+    // collectAsStateWithLifecycle and LocalLifecycleOwner for the attendance screen.
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
 
     // JVM unit tests for attendance logic (run with testDebugUnitTest).
     testImplementation("junit:junit:4.13.2")

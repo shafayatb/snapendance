@@ -2,4 +2,40 @@
 <resources>
     <string name="attendance_title">Attendance</string>
     <string name="attendance_navigate_back">Navigate back</string>
+
+    <!-- Step 1 card (design A1, A2, P2). -->
+    <string name="office_step_title">STEP 1: OFFICE CONTEXT</string>
+    <string name="office_not_saved">No office location saved</string>
+    <string name="office_fetching">Getting GPS fix…</string>
+    <string name="office_fetching_accuracy">accuracy ±%1$d m · improving</string>
+    <string name="office_fetching_waiting">waiting for the first fix</string>
+    <string name="office_location_unavailable">Location unavailable</string>
+    <string name="office_coordinates">Lat: %1$s, Lon: %2$s</string>
+    <string name="office_saved_label">SAVED</string>
+    <string name="office_accuracy_label">FIX ACCURACY</string>
+    <string name="office_accuracy_value">±%1$d m</string>
+    <string name="office_saved_today">Today, %1$s</string>
+    <string name="office_saved_yesterday">Yesterday, %1$s</string>
+    <string name="office_saved_date">%1$s, %2$s</string>
+    <string name="office_helper_not_saved">Stand inside the office, then save its GPS position. It is stored on this device only.</string>
+    <string name="office_helper_fetching">Hold the phone still. Indoors, a fix can take a few seconds.</string>
+    <string name="office_helper_saved">To mark your attendance, make sure the saved office location is correct.</string>
+    <string name="office_helper_blocked">Location access is needed to save the office position.</string>
+    <string name="office_set_button">Set Office Location</string>
+    <string name="office_fetching_button">Fetching GPS…</string>
+
+    <!-- Replacing a saved office (plan D8; not in the design). -->
+    <string name="office_replace_title">Replace saved office?</string>
+    <string name="office_replace_body">Your current GPS position will replace the saved office.</string>
+    <string name="office_replace_confirm">Replace</string>
+    <string name="office_replace_cancel">Cancel</string>
+
+    <!-- Snackbars (plan D4). -->
+    <string name="office_retry">Retry</string>
+    <string name="office_error_no_fix">Couldn\'t get a GPS fix. Move near a window and try again.</string>
+    <string name="office_error_inaccurate">GPS accuracy ±%1$d m; ±25 m or better is needed.</string>
+    <string name="office_error_inaccurate_unknown">The GPS fix did not report its accuracy. Try again.</string>
+    <string name="office_error_stale">Only an old GPS fix was available. Try again.</string>
+    <string name="office_error_save">Couldn\'t save the office location.</string>
+    <string name="office_error_load">Couldn\'t load the saved office location.</string>
 </resources>
