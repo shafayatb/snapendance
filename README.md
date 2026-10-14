@@ -10,7 +10,7 @@ It combines two features in one APK:
   durable queue that uploads in the background, survives restarts, and retries automatically when
   the network returns.
 
-**Release APK:** _link added at submission_
+**Release APK:** [snapendance release APK (Google Drive)](https://drive.google.com/file/d/1Cm6mu6jIDfzDc_nlEkrMrbQmQgPMQ3sl/view?usp=sharing)
 
 ## Screenshots
 
@@ -122,7 +122,7 @@ essential prompts, quoted as typed:
 
 > Check out @Task_ Senior App Developer Technical Assessment.pdf and The @AGENTS.md . Anything
 > needed to added or changed? Should there be more relevant references? What about spliting the
-> work into separate tasks md file? Also rename CLUADE to CLAUDE
+> work into separate tasks md file?
 
 > One combined apk. so compose and flutter in the same project.
 > And write the doc/tasks.
@@ -150,6 +150,108 @@ essential prompts, quoted as typed:
 **Running tasks.** Each task started from a short handoff file and an approved plan:
 
 > run @FRESH_PROMPT.md
+
+`FRESH_PROMPT.md` (kept local) is the handoff the agent writes at the end of each task, so the next
+session starts with a clean context. Early on it was a full briefing; later it shrank to a few
+lines pointing at the backlog, the plan, and the log. The first one, for task 01 (the machine path
+replaced with `<project root>`):
+
+<details>
+<summary>FRESH_PROMPT.md for task 01 (2026-10-12)</summary>
+
+```markdown
+# Fresh prompt: Task 01, app shell and native attendance entry
+
+You are working on **Snapendance**, the Intelligent Machines senior app developer assessment:
+one combined Android APK where a Flutter app hosts a native Kotlin/Jetpack Compose attendance
+screen (Task 1 of the brief) and Flutter provides the camera and resilient batch uploads (Task 2).
+Android is the only target; iOS is out of scope. Project root:
+`<project root>`.
+
+**Assigned task:** Task 01 in `docs/tasks/01-app-shell-native-bridge.md`, assigned by the user on
+2026-10-12. Implement only this task. Do not scaffold later tasks or add their dependencies.
+
+## Current state
+
+- Flutter counter starter, untouched. Android package/application ID `com.shafayatb.snapendance`;
+  `MainActivity` (Kotlin, `FlutterActivity`) at `android/app/src/main/kotlin/com/shafayatb/snapendance/`.
+- Toolchain at last check: Flutter 3.44.6, Dart 3.12.2, AGP 9.0.1 (built-in Kotlin), Kotlin
+  Gradle plugin 2.3.20, Gradle 9.1.0. Re-check before choosing dependency versions.
+- Compose is **not** enabled yet. A debug APK built successfully after the package rename.
+- No Git repository existed at last check. Claude Code hooks in `.claude/settings.json` block
+  agent Git writes, block edits to protected files, and format + analyze edited Dart files.
+- `docs/design/` is local-only (gitignored); it holds the UI design and exported frames.
+
+## Read first, in this order
+
+1. `AGENTS.md` (rules; source-of-truth order; small steps with commit checkpoints).
+2. `docs/tasks/README.md`, then `docs/tasks/01-app-shell-native-bridge.md` (scope, acceptance).
+3. `docs/design/README.md` (adopted choices and deviations), frames
+   `docs/design/screens/H1-first-run.png` and `A1-office-not-set.png` (top bar only for this task),
+   and `docs/design/screens/design-system.png`. Exact token values are in
+   `docs/design/Design System.dc.html` (script `renderVals()`).
+4. `docs/agent-reference/product.md` (App shell section), `implementation.md` (Compose under
+   AGP 9, native boundary), `verification.md`, `git.md`, `delivery.md`.
+5. The current code: `pubspec.yaml`, `lib/main.dart`, `test/widget_test.dart`,
+   `android/app/build.gradle.kts`, `android/settings.gradle.kts`, the manifest, `MainActivity.kt`.
+
+## Task 01 scope (summary; the task file is authoritative)
+
+- Replace the counter starter: `lib/app/` composition, app title and launcher label
+  "Snapendance", Home screen matching design `H1` with an **Attendance** entry and a static
+  subtitle (no live attendance summary). No placeholder entries for later features.
+- Light design tokens (colors, type, spacing, radius, status colors) in Flutter (`ThemeData` +
+  `ThemeExtension`) and Compose (`MaterialTheme` + status colors).
+- Enable Compose for AGP 9 / Kotlin 2.3.20; add `AttendanceActivity` (`ComponentActivity` +
+  `setContent`) with an `AttendanceScreen` showing only the "Attendance" top bar with back arrow.
+- A minimal `MethodChannel` call (e.g. `openAttendance`) from Flutter through a small Dart class
+  injected into the Home screen; back arrow and system Back return to Flutter.
+
+**Acceptance criteria:**
+
+- Launch shows the Snapendance Home (design `H1`), not the counter.
+- Tapping Attendance opens the native Compose `AttendanceScreen`.
+- Back arrow and system Back return to the same Flutter Home; repeated round trips work without a
+  crash or duplicate Activities.
+- A failed channel call shows user feedback instead of crashing.
+- Debug APK builds; `flutter analyze` is clean.
+
+**Decisions to settle in the plan:** channel and method names and error mapping; fonts (bundle
+IBM Plex Sans/Mono, no runtime download) and icons (Material Symbols Rounded font vs. Material
+Icons Rounded equivalents); keeping Dart and Kotlin tokens consistent; Activity launch mode so
+Back returns to Flutter predictably. Ask the user about anything consequential.
+
+## How to work
+
+1. **Git first (read-only).** Check whether a repository exists and which branch is current. If
+   there is no repository, or the branch is not `feature/01-app-shell-native-bridge` created from
+   `develop`, tell the user the exact commands from `docs/agent-reference/git.md` and wait. Never
+   run Git write commands yourself.
+2. **Plan before code.** Write `docs/plans/2026-10-12-01-app-shell-native-bridge.md`: decisions,
+   files, test strategy, and **ordered commit-sized steps**, each with a Conventional Commit
+   message. A reasonable starting split, to refine: Flutter Home replacing the counter; Flutter
+   theme tokens and fonts; Compose enablement and an empty `AttendanceActivity`; Compose theme and
+   top bar; method channel with the injected Dart boundary and its widget test; failure feedback.
+   Show the plan and get approval before any production change.
+3. **One step at a time.** For each step: write the meaningful failing test first and observe the
+   failure (where the step has observable behavior), make the minimum change, run the focused
+   checks, then **stop at the commit checkpoint**: list changed files, what to look for in the
+   diff, checks run, and the suggested commit message. Wait for the user to commit before the next
+   step. Never build the whole task and split it afterwards.
+4. **Verify.** `dart format`/`flutter analyze`, focused `flutter test`, `flutter build apk --debug`
+   (prefix shell commands with `rtk`). Install on an Android device or emulator (ask the user
+   which) and run the round trip, rotation on the native screen, and background/return. Record
+   device and Android version. Report anything unverified honestly.
+5. **Finish.** Append the task entry to `docs/agent-log.md` (actual prompts, decisions, evidence),
+   update the task status in `docs/tasks/README.md`, write the review handoff in
+   `/tmp/snapendance-agent-review/` per `delivery.md`, replace this `FRESH_PROMPT.md` with the
+   prompt for the next assigned task (or one that awaits assignment), give the completion report
+   including the merge step for the user, and end with **STOPPED — ready for a fresh context.**
+
+Leave all changes unstaged and uncommitted. Do not add co-author or generated-by trailers.
+```
+
+</details>
 
 **Steering the implementation**
 
