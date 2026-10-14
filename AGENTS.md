@@ -1,7 +1,5 @@
 # Snapendance agent instructions
 
-@/Users/shafayatbinmamun/.codex/RTK.md
-
 This is the single agent-rules entry point. Tool-specific rule files (including the existing
 `CLAUDE.md`) must be symlinks to this file; keep that symlink intact and edit `AGENTS.md` directly.
 The linked guides are project reference documentation, not separate agent configurations.
@@ -46,7 +44,7 @@ and report it.
 | [Verification](docs/agent-reference/verification.md) | implementing or verifying app behavior |
 | [Delivery](docs/agent-reference/delivery.md) | task flow, step checkpoints, task review, agent log, `FRESH_PROMPT.md`, submission |
 | [Git](docs/agent-reference/git.md) | any Git inspection or suggestion |
-| [UI design](docs/design/README.md) | building or changing any screen (frames and deviations table) |
+| UI design: `docs/design/README.md` (local only, not published) | building or changing any screen (frames and deviations table) |
 | [Task backlog](docs/tasks/README.md) | starting, scoping, or handing off any implementation task |
 
 ## Always-on rules
@@ -70,4 +68,4 @@ and report it.
 - **Separate review.** One read-only review agent checks each finished task before its final
   checkpoint; never approve your own work or report a review that did not occur.
 
-All shell commands must follow the referenced RTK instructions.
+Shell commands follow the RTK instructions from the user's global agent config.
