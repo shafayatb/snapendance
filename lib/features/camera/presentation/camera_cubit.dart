@@ -10,9 +10,9 @@ import 'camera_state.dart';
 
 /// Camera preview state: permission, the open camera's lifecycle, zoom, flash, and focus.
 ///
-/// The camera is opened by [start], released by [appPaused], [screenCovered], and [close], and
-/// reopened by [appResumed] and [screenUncovered]. Each open has a generation number, so a camera that finishes opening after the
-/// app left is closed instead of shown.
+/// The camera is opened by [start], released by [appPaused], [screenCovered], and [close],
+/// and reopened by [appResumed] and [screenUncovered]. Each open has a generation number, so a
+/// camera that finishes opening after the app left is closed instead of shown.
 class CameraCubit extends Cubit<CameraState> {
   CameraCubit(this._service) : super(const CameraState());
 
@@ -35,6 +35,9 @@ class CameraCubit extends Cubit<CameraState> {
   Future<void>? _opening;
   // The generation of the open in progress, so a resume during it does not start another.
   int? _openingGeneration;
+
+  /// Another screen is over the camera ([screenCovered]).
+  bool get isCovered => _covered;
 
   /// The open camera's preview while [CameraState.status] is ready; otherwise null.
   CameraPreviewSource? get preview => _session;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -68,6 +69,29 @@ void main() {
       await tester.tap(find.text('Try again'));
       await tester.pumpAndSettle();
 
+      expect(find.text('Home'), findsOneWidget);
+    });
+
+    testWidgets('Try again is not offered while a retry is running', (
+      tester,
+    ) async {
+      final retry = Completer<Widget>();
+      var attempts = 0;
+      await tester.pumpWidget(
+        AppStartup(
+          start: () => attempts++ == 0
+              ? Future.error(const FileSystemException('Storage unavailable'))
+              : retry.future,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Try again'));
+      await tester.pump();
+
+      expect(find.text('Try again'), findsNothing);
+      retry.complete(const MaterialApp(home: Text('Home')));
+      await tester.pumpAndSettle();
       expect(find.text('Home'), findsOneWidget);
     });
   });

@@ -68,14 +68,16 @@ class BatchCubit extends Cubit<BatchState> {
     emit(state.copyWith(saving: true));
     try {
       await _repository.addCapture(await takePicture());
-    } on Exception {
-      // CameraCaptureException, CaptureSaveException, or anything unexpected from storage.
+    } on Object catch (error) {
+      // Not only CameraCaptureException and CaptureSaveException: a camera released mid-capture
+      // can throw a plugin error, and a locked shutter would need an app restart.
+      debugPrint('Capture failed: $error');
       return _notify(BatchNoticeKind.captureFailed);
     }
     try {
       final stored = await _read();
       if (!isClosed) emit(_withStored(stored).copyWith(saving: false));
-    } on Exception catch (error) {
+    } on Object catch (error) {
       // The photo is stored; the next poll shows it.
       debugPrint('Reading the batch after a capture failed: $error');
       if (!isClosed) emit(state.copyWith(saving: false));

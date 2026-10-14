@@ -25,9 +25,13 @@ class RejectingApi implements UploadApi {
 
 class CountingScheduler implements UploadScheduler {
   int scheduled = 0;
+  Object? failure;
 
   @override
-  Future<void> scheduleUploads() async => scheduled++;
+  Future<void> scheduleUploads() async {
+    if (failure case final error?) throw error;
+    scheduled++;
+  }
 }
 
 class FakeConnectivity implements ConnectivityService {
@@ -227,6 +231,20 @@ void main() {
       verify: (cubit) {
         expect(cubit.state.failedActions, 1);
         expect(cubit.state.total, 3);
+      },
+    );
+
+    blocTest<UploadsCubit, UploadsState>(
+      'a retry whose scheduling fails is still applied, without an error',
+      build: () => UploadsCubit(repository, scheduler, connectivity),
+      act: (cubit) async {
+        await SyncEngine(repository, RejectingApi()).run();
+        scheduler.failure = StateError('WorkManager is not initialized');
+        await cubit.retry(first.first.id);
+      },
+      verify: (cubit) {
+        expect(cubit.state.failedActions, 0);
+        expect(cubit.state.batches.last.items.first.status, ItemStatus.pending);
       },
     );
 

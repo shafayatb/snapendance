@@ -47,7 +47,9 @@ class _AppStartupState extends State<AppStartup> {
       future: _app,
       builder: (context, snapshot) {
         if (snapshot.hasData) return snapshot.requireData;
-        if (snapshot.hasError) {
+        // A retry keeps the last error in its snapshot until it settles.
+        if (snapshot.hasError &&
+            snapshot.connectionState == ConnectionState.done) {
           debugPrint('Start-up failed: ${snapshot.error}');
           return _StartupError(
             onRetry: () => setState(() {

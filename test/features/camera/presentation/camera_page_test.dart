@@ -58,6 +58,7 @@ void main() {
     when(() => cubit.preview).thenReturn(null);
     when(() => cubit.screenCovered()).thenAnswer((_) async {});
     when(() => cubit.screenUncovered()).thenAnswer((_) async {});
+    when(() => cubit.isCovered).thenReturn(false);
   });
 
   /// Home with the camera pushed on top, so "Back to home" has somewhere to go.
@@ -607,6 +608,36 @@ void main() {
         expect(find.text('Upload Manager'), findsOneWidget);
       });
     }
+
+    testWidgets('a second tap does not open another Upload Manager', (
+      tester,
+    ) async {
+      await showCamera(tester, CameraStatus.ready, state: ready);
+      when(() => cubit.isCovered).thenReturn(true);
+
+      await tester.tap(find.bySemanticsLabel('Upload Manager'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing waiting to upload'), findsNothing);
+      verifyNever(() => cubit.screenCovered());
+    });
+
+    testWidgets('the Upload Manager waits while a photo is saving', (
+      tester,
+    ) async {
+      await showCamera(
+        tester,
+        CameraStatus.ready,
+        state: ready,
+        batchState: const BatchState(saving: true),
+      );
+
+      await tester.tap(find.bySemanticsLabel('Upload Manager'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing waiting to upload'), findsNothing);
+      verifyNever(() => cubit.screenCovered());
+    });
 
     testWidgets('the camera is released while the Upload Manager is open', (
       tester,

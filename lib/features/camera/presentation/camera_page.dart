@@ -35,9 +35,11 @@ abstract final class CameraColors {
 /// Controls are dimmed to this while a photo is being saved (C6).
 const _savingOpacity = 0.38;
 
-/// Opens the Upload Manager over the camera, which is released until it closes.
+/// Opens the Upload Manager over the camera, which is released until it closes. Ignored while
+/// one is already open (a double tap) or a photo is saving, which needs the camera.
 Future<void> _openUploadManager(BuildContext context) async {
   final camera = context.read<CameraCubit>();
+  if (camera.isCovered || context.read<BatchCubit>().state.saving) return;
   final navigator = Navigator.of(context);
   camera.screenCovered();
   await navigator.push(UploadManagerPage.route());

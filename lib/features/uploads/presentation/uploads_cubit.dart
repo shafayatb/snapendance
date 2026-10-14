@@ -43,14 +43,17 @@ class UploadsCubit extends Cubit<UploadsState> {
     final regained = connected && !_connected;
     _connected = connected;
     // WorkManager also waits for the network; asking again makes sure a run is queued.
-    if (regained) {
-      try {
-        await _scheduler.scheduleUploads();
-      } on Object catch (error) {
-        debugPrint('Scheduling uploads failed: $error');
-      }
-    }
+    if (regained) await _scheduleUploads();
     await load();
+  }
+
+  /// A failed schedule is left to the periodic recovery task; the item itself is stored.
+  Future<void> _scheduleUploads() async {
+    try {
+      await _scheduler.scheduleUploads();
+    } on Object catch (error) {
+      debugPrint('Scheduling uploads failed: $error');
+    }
   }
 
   /// A failed read keeps the list shown; the next poll tries again.
@@ -87,7 +90,7 @@ class UploadsCubit extends Cubit<UploadsState> {
 
   Future<void> retry(int itemId) => _act(() async {
     await _repository.retryItem(itemId);
-    await _scheduler.scheduleUploads();
+    await _scheduleUploads();
   });
 
   Future<void> remove(int itemId) => _act(() => _repository.removeItem(itemId));

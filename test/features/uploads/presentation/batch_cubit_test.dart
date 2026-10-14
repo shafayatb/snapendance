@@ -274,6 +274,42 @@ void main() {
     );
 
     blocTest<BatchCubit, BatchState>(
+      'any error from the camera frees the shutter',
+      build: () => BatchCubit(repository, scheduler),
+      act: (cubit) => cubit.capture(
+        () => Future.error(StateError('Controller was disposed')),
+      ),
+      expect: () => [
+        const BatchState(saving: true),
+        const BatchState(notice: BatchNotice(BatchNoticeKind.captureFailed, 1)),
+      ],
+    );
+
+    blocTest<BatchCubit, BatchState>(
+      'a queued batch is announced even when scheduling and the read fail',
+      setUp: () {
+        open = const OpenBatch(count: 2, lastFilePath: '/b.jpg');
+        when(
+          () => scheduler.scheduleUploads(),
+        ).thenThrow(StateError('WorkManager is not initialized'));
+        when(() => repository.pendingCount()).thenAnswer(
+          (_) async =>
+              pending > 0 ? throw Exception('database is locked') : pending,
+        );
+      },
+      build: () => BatchCubit(repository, scheduler),
+      seed: () => const BatchState(openCount: 2, lastFilePath: '/b.jpg'),
+      act: (cubit) => cubit.submit(),
+      expect: () => [
+        const BatchState(
+          openCount: 2,
+          lastFilePath: '/b.jpg',
+          notice: BatchNotice(BatchNoticeKind.batchQueued, 1, count: 2),
+        ),
+      ],
+    );
+
+    blocTest<BatchCubit, BatchState>(
       'a failed submit is reported and can be tried again',
       setUp: () => when(
         () => repository.submitOpenBatch(),
