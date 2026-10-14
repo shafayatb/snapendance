@@ -10,8 +10,8 @@ import 'camera_state.dart';
 
 /// Camera preview state: permission, the open camera's lifecycle, zoom, flash, and focus.
 ///
-/// The camera is opened by [start], released by [appPaused] and [close], and reopened by
-/// [appResumed]. Each open has a generation number, so a camera that finishes opening after the
+/// The camera is opened by [start], released by [appPaused], [screenCovered], and [close], and
+/// reopened by [appResumed] and [screenUncovered]. Each open has a generation number, so a camera that finishes opening after the
 /// app left is closed instead of shown.
 class CameraCubit extends Cubit<CameraState> {
   CameraCubit(this._service) : super(const CameraState());
@@ -26,6 +26,9 @@ class CameraCubit extends Cubit<CameraState> {
   // The permission dialog pauses the app and resumes it before the answer arrives; that resume
   // must not start a second open, which would read "denied" and win.
   bool _awaitingPermissionAnswer = false;
+
+  // Another screen is over the camera; app resumes leave it closed until that screen closes.
+  bool _covered = false;
 
   // Opens run one at a time: the camera plugin cannot initialize two cameras at once. An open
   // waits for the one before it, which closes its camera when it finds itself overtaken.
@@ -46,22 +49,40 @@ class CameraCubit extends Cubit<CameraState> {
 
   /// The app went to the background: other apps (and the native attendance screen) may need
   /// the camera.
-  Future<void> appPaused() async {
-    final generation = ++_generation;
-    await _releaseSession();
-    // A quick return may have reopened the camera while this one was closing.
-    if (generation == _generation && !isClosed) emit(const CameraState());
-  }
+  Future<void> appPaused() => _release(keepBlockedState: false);
 
   /// Back from the background or app settings. Permission is checked, not requested, so a
   /// refusal does not bring the dialog straight back.
   Future<void> appResumed() async {
-    if (_session != null ||
+    if (_covered ||
+        _session != null ||
         _awaitingPermissionAnswer ||
         _openingGeneration == _generation) {
       return;
     }
     await _open(askForPermission: false);
+  }
+
+  /// Another screen (the Upload Manager) is pushed over the camera: leaving releases it. A
+  /// blocked state is kept, since a check after the return cannot tell a permanent denial.
+  Future<void> screenCovered() {
+    _covered = true;
+    return _release(keepBlockedState: true);
+  }
+
+  /// The screen over the camera was closed.
+  Future<void> screenUncovered() {
+    _covered = false;
+    return appResumed();
+  }
+
+  Future<void> _release({required bool keepBlockedState}) async {
+    final generation = ++_generation;
+    await _releaseSession();
+    // A quick return may have reopened the camera while this one was closing.
+    if (generation != _generation || isClosed) return;
+    if (keepBlockedState && state.status != CameraStatus.ready) return;
+    emit(const CameraState());
   }
 
   Future<void> _open({required bool askForPermission}) async {

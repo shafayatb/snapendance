@@ -35,6 +35,15 @@ abstract final class CameraColors {
 /// Controls are dimmed to this while a photo is being saved (C6).
 const _savingOpacity = 0.38;
 
+/// Opens the Upload Manager over the camera, which is released until it closes.
+Future<void> _openUploadManager(BuildContext context) async {
+  final camera = context.read<CameraCubit>();
+  final navigator = Navigator.of(context);
+  camera.screenCovered();
+  await navigator.push(UploadManagerPage.route());
+  camera.screenUncovered();
+}
+
 /// `CameraPreviewScreen`: provides [CameraCubit] and starts the camera.
 class CameraPage extends StatelessWidget {
   const CameraPage({super.key, required this.cameraService});
@@ -93,7 +102,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
         // The new batch at the top of the Upload Manager is the confirmation.
         _topMessageTimer?.cancel();
         setState(() => _topMessage = null);
-        Navigator.of(context).push(UploadManagerPage.route());
+        _openUploadManager(context);
       case BatchNoticeKind.captureFailed:
         _showTopMessage(
           const _Toast(
@@ -604,8 +613,7 @@ class _UploadsButton extends StatelessWidget {
             _RoundButton(
               icon: Icons.cloud_upload_outlined,
               tooltip: 'Upload Manager',
-              onPressed: () =>
-                  Navigator.of(context).push(UploadManagerPage.route()),
+              onPressed: () => _openUploadManager(context),
             ),
             if (pending > 0)
               Positioned(

@@ -56,6 +56,8 @@ void main() {
     when(() => cubit.retry()).thenAnswer((_) async {});
     when(() => cubit.openAppSettings()).thenAnswer((_) async {});
     when(() => cubit.preview).thenReturn(null);
+    when(() => cubit.screenCovered()).thenAnswer((_) async {});
+    when(() => cubit.screenUncovered()).thenAnswer((_) async {});
   });
 
   /// Home with the camera pushed on top, so "Back to home" has somewhere to go.
@@ -567,6 +569,21 @@ void main() {
 
       expect(find.text('Upload Manager'), findsOneWidget);
       expect(find.text('Nothing waiting to upload'), findsOneWidget);
+    });
+
+    testWidgets('the camera is released while the Upload Manager is open', (
+      tester,
+    ) async {
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      await tester.tap(find.bySemanticsLabel('Upload Manager'));
+      await tester.pumpAndSettle();
+      verify(() => cubit.screenCovered()).called(1);
+      verifyNever(() => cubit.screenUncovered());
+
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await tester.pumpAndSettle();
+      verify(() => cubit.screenUncovered()).called(1);
     });
   });
 }
