@@ -118,6 +118,29 @@ void main() {
   });
 
   group('lifecycle', () {
+    test('a pause whose release finishes after a quick return keeps the '
+        'reopened camera', () async {
+      final released = Completer<void>();
+      final reopened = MockCameraSession();
+      when(() => session.close()).thenAnswer((_) => released.future);
+      when(() => reopened.minZoom).thenReturn(1);
+      when(() => reopened.maxZoom).thenReturn(8);
+      when(() => reopened.focusPointSupported).thenReturn(true);
+      when(() => reopened.close()).thenAnswer((_) async {});
+      final cubit = CameraCubit(service);
+      await cubit.start();
+      when(() => service.open()).thenAnswer((_) async => reopened);
+
+      final pausing = cubit.appPaused();
+      await cubit.appResumed();
+      released.complete();
+      await pausing;
+
+      expect(cubit.state, ready);
+      expect(cubit.preview, same(reopened));
+      await cubit.close();
+    });
+
     blocTest<CameraCubit, CameraState>(
       'going to the background releases the camera and returning reopens it',
       build: () => CameraCubit(service),

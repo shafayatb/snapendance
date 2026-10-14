@@ -47,9 +47,10 @@ class CameraCubit extends Cubit<CameraState> {
   /// The app went to the background: other apps (and the native attendance screen) may need
   /// the camera.
   Future<void> appPaused() async {
-    _generation++;
+    final generation = ++_generation;
     await _releaseSession();
-    if (!isClosed) emit(const CameraState());
+    // A quick return may have reopened the camera while this one was closing.
+    if (generation == _generation && !isClosed) emit(const CameraState());
   }
 
   /// Back from the background or app settings. Permission is checked, not requested, so a
