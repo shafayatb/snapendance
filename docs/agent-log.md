@@ -243,7 +243,7 @@ Conventions:
 - **Claude:** started this log, backfilled from the two Claude Code session transcripts, and
   marked the essential prompts.
 
-### Task 01, step 1: Home replaces the counter
+### Task 01, step 1: Home replaces the counter · Essential
 
 > committed, plan approved, start step 1
 
@@ -275,7 +275,7 @@ Conventions:
 - **Decided by the developer:** Attendance subtitle shortened to "Office setup and check-in"
   (fits on one line on the 360 dp screen).
 
-### Task 01, step 2: Flutter theme and fonts
+### Task 01, step 2: Flutter theme and fonts · Essential
 
 > start step 2
 
@@ -843,6 +843,8 @@ asked to authorize the step 9 commit in the conversation, the user chose:
   `--no-ff` by the agent.
 
 ## 2026-10-14 · Fix: open the Upload Manager after a batch is queued (Claude Code)
+
+### Open the Upload Manager after submit · Essential
 
 > one thing i think should be improved. after clicking upload, the screen should go the @upload_manager_page.dart.
 

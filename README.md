@@ -153,11 +153,17 @@ quoted as typed:
 
 > Approved, one mark per day, start step 1
 
-**Deadline triage**
+**Steering the implementation**
 
-> What do you think? Can this project be completed by 8pm tomorrow?
+> Short form date works. No need to add verbiage. like Tue would work. And use date format rather
+> than making your own weekdays and months
 
-> I want you to commit, merge etc. There is no time to review things for now
+> Test on the connected device first
+
+> ignore the UI differences unless i tell you to. don't need to be perfect for this assignment task
+
+> one thing i think should be improved. after clicking upload, the screen should go the
+> @upload_manager_page.dart.
 
 How the work was organized: [`AGENTS.md`](AGENTS.md) holds the agent rules, `docs/tasks/` the
 backlog, and `docs/plans/` one approved plan per task. Claude Code hooks in `.claude/` block edits to
