@@ -117,7 +117,84 @@ void main() {
     );
   });
 
+  group('covered by the Upload Manager', () {
+    blocTest<CameraCubit, CameraState>(
+      'releases the camera while covered and reopens it on return',
+      build: () => CameraCubit(service),
+      act: (cubit) async {
+        await cubit.start();
+        await cubit.screenCovered();
+        expect(cubit.preview, isNull);
+        await cubit.screenUncovered();
+      },
+      expect: () => [ready, const CameraState(), ready],
+      verify: (_) => verify(() => service.open()).called(2),
+    );
+
+    blocTest<CameraCubit, CameraState>(
+      'an app resume while covered does not reopen the camera',
+      build: () => CameraCubit(service),
+      act: (cubit) async {
+        await cubit.start();
+        await cubit.screenCovered();
+        await cubit.appPaused();
+        await cubit.appResumed();
+      },
+      expect: () => [ready, const CameraState()],
+      verify: (_) => verify(() => service.open()).called(1),
+    );
+
+    blocTest<CameraCubit, CameraState>(
+      'a permanent denial still points to settings after the return',
+      setUp: () {
+        var asked = false;
+        when(() => service.permission()).thenAnswer(
+          (_) async => asked
+              ? CameraPermission.denied
+              : CameraPermission.permanentlyDenied,
+        );
+        when(() => service.openAppSettings()).thenAnswer((_) async {
+          asked = true;
+        });
+      },
+      build: () => CameraCubit(service),
+      act: (cubit) async {
+        await cubit.start();
+        // Android's check cannot report a permanent denial once asked.
+        await cubit.openAppSettings();
+        await cubit.screenCovered();
+        await cubit.screenUncovered();
+      },
+      expect: () => [
+        const CameraState(status: CameraStatus.permissionPermanentlyDenied),
+      ],
+    );
+  });
+
   group('lifecycle', () {
+    test('a pause whose release finishes after a quick return keeps the '
+        'reopened camera', () async {
+      final released = Completer<void>();
+      final reopened = MockCameraSession();
+      when(() => session.close()).thenAnswer((_) => released.future);
+      when(() => reopened.minZoom).thenReturn(1);
+      when(() => reopened.maxZoom).thenReturn(8);
+      when(() => reopened.focusPointSupported).thenReturn(true);
+      when(() => reopened.close()).thenAnswer((_) async {});
+      final cubit = CameraCubit(service);
+      await cubit.start();
+      when(() => service.open()).thenAnswer((_) async => reopened);
+
+      final pausing = cubit.appPaused();
+      await cubit.appResumed();
+      released.complete();
+      await pausing;
+
+      expect(cubit.state, ready);
+      expect(cubit.preview, same(reopened));
+      await cubit.close();
+    });
+
     blocTest<CameraCubit, CameraState>(
       'going to the background releases the camera and returning reopens it',
       build: () => CameraCubit(service),

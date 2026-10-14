@@ -51,6 +51,14 @@ void main() {
     },
   );
 
+  test('a worker that cannot open its storage retries later', () async {
+    final done = await runUploadTask(
+      () => Future.error(const FileSystemException('Storage unavailable')),
+    );
+
+    expect(done, isFalse);
+  });
+
   test('a transient failure asks WorkManager to retry later', () async {
     await repository.setMockScenario(MockScenario.failOnce);
 

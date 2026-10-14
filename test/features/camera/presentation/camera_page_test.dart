@@ -56,6 +56,9 @@ void main() {
     when(() => cubit.retry()).thenAnswer((_) async {});
     when(() => cubit.openAppSettings()).thenAnswer((_) async {});
     when(() => cubit.preview).thenReturn(null);
+    when(() => cubit.screenCovered()).thenAnswer((_) async {});
+    when(() => cubit.screenUncovered()).thenAnswer((_) async {});
+    when(() => cubit.isCovered).thenReturn(false);
   });
 
   /// Home with the camera pushed on top, so "Back to home" has somewhere to go.
@@ -517,6 +520,22 @@ void main() {
       expect(find.text('Couldn’t save the photo. Try again.'), findsOneWidget);
     });
 
+    testWidgets('a failed submit is reported', (tester) async {
+      whenListen(
+        batch,
+        Stream.value(
+          const BatchState(
+            openCount: 2,
+            notice: BatchNotice(BatchNoticeKind.submitFailed, 1),
+          ),
+        ),
+        initialState: const BatchState(openCount: 2),
+      );
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      expect(find.text('Couldn’t queue the batch. Try again.'), findsOneWidget);
+    });
+
     testWidgets('the cloud icon shows the pending count', (tester) async {
       await showCamera(
         tester,
@@ -567,6 +586,72 @@ void main() {
 
       expect(find.text('Upload Manager'), findsOneWidget);
       expect(find.text('Nothing waiting to upload'), findsOneWidget);
+    });
+
+    for (final status in [
+      CameraStatus.permissionDenied,
+      CameraStatus.permissionPermanentlyDenied,
+      CameraStatus.unavailable,
+    ]) {
+      testWidgets('pending uploads stay reachable when $status', (
+        tester,
+      ) async {
+        await showCamera(
+          tester,
+          status,
+          batchState: const BatchState(pendingCount: 3),
+        );
+
+        await tester.tap(find.bySemanticsLabel('Upload Manager, 3 pending'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Upload Manager'), findsOneWidget);
+      });
+    }
+
+    testWidgets('a second tap does not open another Upload Manager', (
+      tester,
+    ) async {
+      await showCamera(tester, CameraStatus.ready, state: ready);
+      when(() => cubit.isCovered).thenReturn(true);
+
+      await tester.tap(find.bySemanticsLabel('Upload Manager'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing waiting to upload'), findsNothing);
+      verifyNever(() => cubit.screenCovered());
+    });
+
+    testWidgets('the Upload Manager waits while a photo is saving', (
+      tester,
+    ) async {
+      await showCamera(
+        tester,
+        CameraStatus.ready,
+        state: ready,
+        batchState: const BatchState(saving: true),
+      );
+
+      await tester.tap(find.bySemanticsLabel('Upload Manager'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing waiting to upload'), findsNothing);
+      verifyNever(() => cubit.screenCovered());
+    });
+
+    testWidgets('the camera is released while the Upload Manager is open', (
+      tester,
+    ) async {
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      await tester.tap(find.bySemanticsLabel('Upload Manager'));
+      await tester.pumpAndSettle();
+      verify(() => cubit.screenCovered()).called(1);
+      verifyNever(() => cubit.screenUncovered());
+
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await tester.pumpAndSettle();
+      verify(() => cubit.screenUncovered()).called(1);
     });
   });
 }

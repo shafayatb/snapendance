@@ -93,7 +93,16 @@ class _UploadManagerViewState extends State<UploadManagerView>
                 ),
               ),
               Expanded(
-                child: BlocBuilder<UploadsCubit, UploadsState>(
+                child: BlocConsumer<UploadsCubit, UploadsState>(
+                  listenWhen: (previous, current) =>
+                      current.failedActions > previous.failedActions,
+                  listener: (context, _) => ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      const SnackBar(
+                        content: Text('Couldn’t update the upload. Try again.'),
+                      ),
+                    ),
                   builder: (context, state) {
                     if (!state.loaded) {
                       return const Center(child: CircularProgressIndicator());

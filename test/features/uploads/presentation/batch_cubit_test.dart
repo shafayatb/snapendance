@@ -247,4 +247,112 @@ void main() {
     },
     expect: () => [const BatchState(), const BatchState(pendingCount: 7)],
   );
+
+  group('storage errors', () {
+    blocTest<BatchCubit, BatchState>(
+      'a failed read after a saved photo still frees the shutter',
+      setUp: () => when(() => repository.openBatch()).thenAnswer(
+        (_) async =>
+            open.count > 0 ? throw Exception('database is locked') : open,
+      ),
+      build: () => BatchCubit(repository, scheduler),
+      act: (cubit) => cubit.capture(() async => '/tmp/a.jpg'),
+      expect: () => [const BatchState(saving: true), const BatchState()],
+    );
+
+    blocTest<BatchCubit, BatchState>(
+      'an unexpected storage error while saving is reported',
+      setUp: () => when(
+        () => repository.addCapture(any()),
+      ).thenThrow(Exception('database is locked')),
+      build: () => BatchCubit(repository, scheduler),
+      act: (cubit) => cubit.capture(() async => '/tmp/a.jpg'),
+      expect: () => [
+        const BatchState(saving: true),
+        const BatchState(notice: BatchNotice(BatchNoticeKind.captureFailed, 1)),
+      ],
+    );
+
+    blocTest<BatchCubit, BatchState>(
+      'any error from the camera frees the shutter',
+      build: () => BatchCubit(repository, scheduler),
+      act: (cubit) => cubit.capture(
+        () => Future.error(StateError('Controller was disposed')),
+      ),
+      expect: () => [
+        const BatchState(saving: true),
+        const BatchState(notice: BatchNotice(BatchNoticeKind.captureFailed, 1)),
+      ],
+    );
+
+    blocTest<BatchCubit, BatchState>(
+      'a queued batch is announced even when scheduling and the read fail',
+      setUp: () {
+        open = const OpenBatch(count: 2, lastFilePath: '/b.jpg');
+        when(
+          () => scheduler.scheduleUploads(),
+        ).thenThrow(StateError('WorkManager is not initialized'));
+        when(() => repository.pendingCount()).thenAnswer(
+          (_) async =>
+              pending > 0 ? throw Exception('database is locked') : pending,
+        );
+      },
+      build: () => BatchCubit(repository, scheduler),
+      seed: () => const BatchState(openCount: 2, lastFilePath: '/b.jpg'),
+      act: (cubit) => cubit.submit(),
+      expect: () => [
+        const BatchState(
+          openCount: 2,
+          lastFilePath: '/b.jpg',
+          notice: BatchNotice(BatchNoticeKind.batchQueued, 1, count: 2),
+        ),
+      ],
+    );
+
+    blocTest<BatchCubit, BatchState>(
+      'a failed submit is reported and can be tried again',
+      setUp: () => when(
+        () => repository.submitOpenBatch(),
+      ).thenThrow(Exception('database is locked')),
+      build: () => BatchCubit(repository, scheduler),
+      seed: () => const BatchState(openCount: 2),
+      act: (cubit) async {
+        await cubit.submit();
+        await cubit.submit();
+      },
+      expect: () => [
+        const BatchState(
+          openCount: 2,
+          notice: BatchNotice(BatchNoticeKind.submitFailed, 1),
+        ),
+        const BatchState(
+          openCount: 2,
+          notice: BatchNotice(BatchNoticeKind.submitFailed, 2),
+        ),
+      ],
+    );
+
+    blocTest<BatchCubit, BatchState>(
+      'a failed load keeps the counts shown',
+      setUp: () => when(
+        () => repository.pendingCount(),
+      ).thenThrow(Exception('database is locked')),
+      build: () => BatchCubit(repository, scheduler),
+      seed: () => const BatchState(pendingCount: 4),
+      act: (cubit) => expectLater(cubit.load(), completes),
+      expect: () => <BatchState>[],
+    );
+
+    blocTest<BatchCubit, BatchState>(
+      'a failed schedule on resume does not escape',
+      setUp: () {
+        unfinished = true;
+        when(
+          () => scheduler.scheduleUploads(),
+        ).thenThrow(StateError('WorkManager is not initialized'));
+      },
+      build: () => BatchCubit(repository, scheduler),
+      act: (cubit) => expectLater(cubit.appResumed(), completes),
+    );
+  });
 }

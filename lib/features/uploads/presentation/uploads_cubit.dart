@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../data/connectivity_service.dart';
@@ -42,13 +43,30 @@ class UploadsCubit extends Cubit<UploadsState> {
     final regained = connected && !_connected;
     _connected = connected;
     // WorkManager also waits for the network; asking again makes sure a run is queued.
-    if (regained) await _scheduler.scheduleUploads();
+    if (regained) await _scheduleUploads();
     await load();
   }
 
+  /// A failed schedule is left to the periodic recovery task; the item itself is stored.
+  Future<void> _scheduleUploads() async {
+    try {
+      await _scheduler.scheduleUploads();
+    } on Object catch (error) {
+      debugPrint('Scheduling uploads failed: $error');
+    }
+  }
+
+  /// A failed read keeps the list shown; the next poll tries again.
   Future<void> load() async {
-    final batches = await _repository.queuedBatches();
-    final failing = await _repository.lastAttemptFailed();
+    final List<QueuedBatch> batches;
+    final bool failing;
+    try {
+      batches = await _repository.queuedBatches();
+      failing = await _repository.lastAttemptFailed();
+    } on Exception catch (error) {
+      debugPrint('Reading the upload queue failed: $error');
+      return;
+    }
     if (isClosed) return;
     emit(
       UploadsState(
@@ -58,6 +76,7 @@ class UploadsCubit extends Cubit<UploadsState> {
             : failing
             ? ConnectionLink.failing
             : ConnectionLink.stable,
+        failedActions: state.failedActions,
         batches: [
           for (final batch in batches)
             if (batch.items.any((item) => item.status != ItemStatus.uploaded))
@@ -69,14 +88,30 @@ class UploadsCubit extends Cubit<UploadsState> {
 
   Future<void> appResumed() => load();
 
-  Future<void> retry(int itemId) async {
+  Future<void> retry(int itemId) => _act(() async {
     await _repository.retryItem(itemId);
-    await _scheduler.scheduleUploads();
-    await load();
-  }
+    await _scheduleUploads();
+  });
 
-  Future<void> remove(int itemId) async {
-    await _repository.removeItem(itemId);
+  Future<void> remove(int itemId) => _act(() => _repository.removeItem(itemId));
+
+  /// Runs a Retry or Remove tap; a failure is counted so the screen can say so.
+  Future<void> _act(Future<void> Function() action) async {
+    try {
+      await action();
+    } on Object catch (error) {
+      debugPrint('Upload action failed: $error');
+      if (!isClosed) {
+        emit(
+          UploadsState(
+            loaded: state.loaded,
+            batches: state.batches,
+            link: state.link,
+            failedActions: state.failedActions + 1,
+          ),
+        );
+      }
+    }
     await load();
   }
 

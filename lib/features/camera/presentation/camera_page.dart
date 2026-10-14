@@ -35,6 +35,17 @@ abstract final class CameraColors {
 /// Controls are dimmed to this while a photo is being saved (C6).
 const _savingOpacity = 0.38;
 
+/// Opens the Upload Manager over the camera, which is released until it closes. Ignored while
+/// one is already open (a double tap) or a photo is saving, which needs the camera.
+Future<void> _openUploadManager(BuildContext context) async {
+  final camera = context.read<CameraCubit>();
+  if (camera.isCovered || context.read<BatchCubit>().state.saving) return;
+  final navigator = Navigator.of(context);
+  camera.screenCovered();
+  await navigator.push(UploadManagerPage.route());
+  camera.screenUncovered();
+}
+
 /// `CameraPreviewScreen`: provides [CameraCubit] and starts the camera.
 class CameraPage extends StatelessWidget {
   const CameraPage({super.key, required this.cameraService});
@@ -93,12 +104,20 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
         // The new batch at the top of the Upload Manager is the confirmation.
         _topMessageTimer?.cancel();
         setState(() => _topMessage = null);
-        Navigator.of(context).push(UploadManagerPage.route());
+        _openUploadManager(context);
       case BatchNoticeKind.captureFailed:
         _showTopMessage(
           const _Toast(
             icon: Icons.error_outline_rounded,
             text: 'Couldn’t save the photo. Try again.',
+          ),
+          const Duration(seconds: 3),
+        );
+      case BatchNoticeKind.submitFailed:
+        _showTopMessage(
+          const _Toast(
+            icon: Icons.error_outline_rounded,
+            text: 'Couldn’t queue the batch. Try again.',
           ),
           const Duration(seconds: 3),
         );
@@ -535,7 +554,7 @@ class _AnimatedFocusRingState extends State<_AnimatedFocusRing>
 class _TopBar extends StatelessWidget {
   const _TopBar({this.live = false});
 
-  /// The camera is open: the upload and flash buttons are shown.
+  /// The camera is open: the flash button is shown.
   final bool live;
 
   @override
@@ -564,17 +583,15 @@ class _TopBar extends StatelessWidget {
                   onPressed: () => Navigator.of(context).maybePop(),
                 ),
                 const Spacer(),
-                if (live) ...[
-                  const _UploadsButton(),
-                  const SizedBox(width: 8),
-                  const _FlashButton(),
-                  const SizedBox(width: 8),
-                  _RoundButton(
-                    icon: Icons.settings_rounded,
-                    tooltip: 'Upload simulation',
-                    onPressed: () => showSimulationSheet(context),
-                  ),
-                ],
+                // Uploads stay reachable when the camera is blocked or still starting.
+                const _UploadsButton(),
+                const SizedBox(width: 8),
+                if (live) ...[const _FlashButton(), const SizedBox(width: 8)],
+                _RoundButton(
+                  icon: Icons.settings_rounded,
+                  tooltip: 'Upload simulation',
+                  onPressed: () => showSimulationSheet(context),
+                ),
               ],
             ),
           ),
@@ -604,8 +621,7 @@ class _UploadsButton extends StatelessWidget {
             _RoundButton(
               icon: Icons.cloud_upload_outlined,
               tooltip: 'Upload Manager',
-              onPressed: () =>
-                  Navigator.of(context).push(UploadManagerPage.route()),
+              onPressed: () => _openUploadManager(context),
             ),
             if (pending > 0)
               Positioned(

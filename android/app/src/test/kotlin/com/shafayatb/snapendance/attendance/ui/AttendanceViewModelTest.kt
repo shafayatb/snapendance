@@ -82,6 +82,26 @@ class AttendanceViewModelTest {
     }
 
     @Test
+    fun markingWaitsForTheStoredRecordAfterTheFirstResume() = runTest {
+        val attendance = FakeAttendanceStore().apply { readGate = CompletableDeferred() }
+        val viewModel = AttendanceViewModel(
+            locationSource = source,
+            officeStore = store,
+            attendanceStore = attendance,
+            eligibility = AttendanceEligibility(FlatDistanceCalculator),
+            elapsedRealtimeMillis = { nowElapsedRealtime },
+            currentTimeMillis = { nowEpochMillis },
+            timeZone = TimeZone.getTimeZone("UTC"),
+        )
+
+        viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.Precise))
+        assertFalse(viewModel.uiState.value.isAttendanceLoaded)
+
+        attendance.readGate?.complete(Unit)
+        assertTrue(viewModel.uiState.value.isAttendanceLoaded)
+    }
+
+    @Test
     fun savedOfficeIsShownOnStart() = runTest {
         store = FakeOfficeStore(savedOffice)
 

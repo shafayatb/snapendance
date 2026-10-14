@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../camera/data/camera_service.dart';
 import '../data/upload_queue_repository.dart';
 import '../data/upload_scheduler.dart';
 import '../domain/upload_models.dart';
@@ -31,18 +31,34 @@ class BatchCubit extends Cubit<BatchState> {
   int _noticeSerial = 0;
   bool _submitting = false;
 
-  /// Reads the counts again from storage.
+  /// Reads the counts again from storage. A failed read keeps the counts shown; the next poll
+  /// tries again.
   Future<void> load() async {
-    final stored = await _read();
-    if (!isClosed) emit(_withStored(stored));
+    try {
+      final stored = await _read();
+      if (!isClosed) emit(_withStored(stored));
+    } on Exception catch (error) {
+      debugPrint('Reading the batch counts failed: $error');
+    }
   }
 
   /// App start and resume: refreshes the counts (the worker may have uploaded) and makes sure
   /// unfinished uploads have a scheduled run, in case one was lost.
   Future<void> appResumed() async {
     await load();
-    if (await _repository.hasUnfinishedWork()) {
+    try {
+      if (await _repository.hasUnfinishedWork()) await _scheduleUploads();
+    } on Exception catch (error) {
+      debugPrint('Checking for unfinished uploads failed: $error');
+    }
+  }
+
+  /// A failed schedule is left to the periodic recovery task and the next resume.
+  Future<void> _scheduleUploads() async {
+    try {
       await _scheduler.scheduleUploads();
+    } on Object catch (error) {
+      debugPrint('Scheduling uploads failed: $error');
     }
   }
 
@@ -52,22 +68,26 @@ class BatchCubit extends Cubit<BatchState> {
     emit(state.copyWith(saving: true));
     try {
       await _repository.addCapture(await takePicture());
-    } on CameraCaptureException {
-      return _captureFailed();
-    } on CaptureSaveException {
-      return _captureFailed();
+    } on Object catch (error) {
+      // Not only CameraCaptureException and CaptureSaveException: a camera released mid-capture
+      // can throw a plugin error, and a locked shutter would need an app restart.
+      debugPrint('Capture failed: $error');
+      return _notify(BatchNoticeKind.captureFailed);
     }
-    final stored = await _read();
-    if (!isClosed) emit(_withStored(stored).copyWith(saving: false));
+    try {
+      final stored = await _read();
+      if (!isClosed) emit(_withStored(stored).copyWith(saving: false));
+    } on Object catch (error) {
+      // The photo is stored; the next poll shows it.
+      debugPrint('Reading the batch after a capture failed: $error');
+      if (!isClosed) emit(state.copyWith(saving: false));
+    }
   }
 
-  void _captureFailed() {
+  void _notify(BatchNoticeKind kind) {
     if (isClosed) return;
     emit(
-      state.copyWith(
-        saving: false,
-        notice: BatchNotice(BatchNoticeKind.captureFailed, ++_noticeSerial),
-      ),
+      state.copyWith(saving: false, notice: BatchNotice(kind, ++_noticeSerial)),
     );
   }
 
@@ -101,21 +121,28 @@ class BatchCubit extends Cubit<BatchState> {
     }
     _submitting = true;
     try {
-      final count = await _repository.submitOpenBatch();
-      if (count > 0) await _scheduler.scheduleUploads();
-      final stored = await _read();
-      if (isClosed) return;
-      emit(
-        _withStored(stored).copyWith(
-          notice: count == 0
-              ? null
-              : BatchNotice(
-                  BatchNoticeKind.batchQueued,
-                  ++_noticeSerial,
-                  count: count,
-                ),
-        ),
-      );
+      final int count;
+      try {
+        count = await _repository.submitOpenBatch();
+      } on Exception {
+        return _notify(BatchNoticeKind.submitFailed);
+      }
+      if (count > 0) await _scheduleUploads();
+      final queued = count == 0
+          ? null
+          : BatchNotice(
+              BatchNoticeKind.batchQueued,
+              ++_noticeSerial,
+              count: count,
+            );
+      try {
+        final stored = await _read();
+        if (!isClosed) emit(_withStored(stored).copyWith(notice: queued));
+      } on Exception catch (error) {
+        // The batch is queued; the next poll shows the new counts.
+        debugPrint('Reading the batch after a submit failed: $error');
+        if (!isClosed && queued != null) emit(state.copyWith(notice: queued));
+      }
     } finally {
       _submitting = false;
     }

@@ -32,7 +32,8 @@ class UploadQueueRepository {
   Stream<void> get changes => _changes.stream;
 
   /// Copies the camera's temporary file into app storage, then records it in the open batch.
-  /// Throws [CaptureSaveException]; a failure leaves neither a file nor a row behind.
+  /// Throws [CaptureSaveException]; a failure leaves no row behind, and the copied file is
+  /// deleted where the file system allows.
   Future<UploadItem> addCapture(String temporaryPath) async {
     final capturedAt = _clock();
     final File saved;

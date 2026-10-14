@@ -861,3 +861,43 @@ chose "Just open it (Recommended)" and "Approve, commit and merge".
 - **Checks:** `flutter test` 129/129, `flutter analyze` clean, `git diff --check` clean.
 - **Git:** `fix/07-open-upload-manager-on-submit` from `develop` at `b00982b`; one commit made by
   the agent with the user's authorization; merged into `develop` with `--no-ff` by the agent.
+
+## 2026-10-14 · Task 12: async failure handling (Claude Code)
+
+The user's prompts for this task are not logged, at the user's request. The agent checked a list
+of failure-path findings against the code, proposed a fix task with a plan
+(`docs/plans/2026-10-14-12-async-failure-handling.md`), and the user approved it, named the branch
+differently, and kept their uncommitted `.claude/hooks/git_guard.py` change out of the task.
+
+- **Changes:** a late pause no longer blanks a reopened camera; the camera is released behind the
+  Upload Manager and reopened on return; the Upload Manager button shows in every camera state;
+  the shutter, submit, Upload Manager load/Retry/Remove, and the background worker's setup
+  survive storage and scheduler errors (toasts and a snackbar for user actions); start-up keeps
+  going when the file check or WorkManager setup fails and shows a Try again screen when the
+  database cannot open; attendance waits for the stored record before allowing a mark;
+  `PlatformException` from the camera list maps to unavailable; three comments corrected.
+- **Test-first evidence:** each fix's tests failed first (observed): the late-pause test ended at
+  `initializing`; covered-state blocTests reopened on resume and lost the permanent denial; the
+  page test saw no `screenCovered`; the blocked-state tests found no Upload Manager button; eight
+  storage-error tests failed before the cubit changes; the worker test threw
+  `FileSystemException`; the start-up tests threw; the Kotlin test failed at
+  `assertFalse(isAttendanceLoaded)`. Review fixes: five new tests failed first (a `StateError`
+  locking the shutter, a scheduling failure reported on Retry, Try again shown during a retry, a
+  second Upload Manager while covered or saving).
+- **Device run** (Argent and adb on the Galaxy A04s, debug APK; lens covered): start-up to Home;
+  the camera client disconnected while the Upload Manager was open (`dumpsys media.camera`) and
+  reconnected on return, also after a queued batch opened it; four quick home/return cycles
+  ended with the camera open and controls ready; with camera access revoked, the Upload Manager
+  opened from the denied state and the state survived the return; capture and submit opened the
+  Upload Manager with the batch QUEUED; a cloud tap 150 ms after the shutter was ignored and the
+  photo saved; a double tap opened one Upload Manager; Attendance opened with today's mark.
+- **Not verified on the phone:** the start-up error screen and the storage-error paths (tests
+  only). Found: a `USER_FIXED` camera permission reads as "denied" with no dialog (deferred).
+- **Task review:** one read-only review agent: approve with fixes (one P2, seven P3). The P2 and
+  five P3s were fixed in `d8d9416`; the camera release/open ordering (P3-4) is deferred.
+- **Checks:** `flutter test` 157/157, `flutter analyze` clean, native unit tests 85/85,
+  `git diff --check` clean.
+- **Git:** `fix/12-async-failure-handling` from `develop` at `f85cdbf`; commits `c458aee`,
+  `1048f4c`, `e11b6eb`, `2e8f878`, `f8e31d4`, `d4f7330`, `ef7009f`, `d1cca5d`, `5c17458`,
+  `d8d9416`, and this records commit, made by the agent with the user's authorization; merged
+  into `develop` with `--no-ff` by the agent.

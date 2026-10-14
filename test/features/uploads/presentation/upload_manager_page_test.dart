@@ -187,4 +187,21 @@ void main() {
 
     expect(find.text('STABLE LINK'), findsOneWidget);
   });
+
+  testWidgets('a Retry or Remove that could not be stored is reported', (
+    tester,
+  ) async {
+    final shown = batch([item(ItemStatus.failed, attempts: 5)]);
+    whenListen(
+      cubit,
+      Stream.value(
+        UploadsState(loaded: true, batches: [shown], failedActions: 1),
+      ),
+      initialState: UploadsState(loaded: true, batches: [shown]),
+    );
+    await show(tester, [shown]);
+    await tester.pump();
+
+    expect(find.text('Couldn’t update the upload. Try again.'), findsOneWidget);
+  });
 }
