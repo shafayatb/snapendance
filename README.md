@@ -122,9 +122,7 @@ quoted as typed:
 > needed to added or changed? Should there be more relevant references? What about spliting the
 > work into separate tasks md file? Also rename CLUADE to CLAUDE
 
-> 1.First the package became com.shafayatb.snapendance.snapendence. change it to
-> com.shafayatb.snapendance
-> 2. One conbined apk. so compose and flutter in the same project.
+> One combined apk. so compose and flutter in the same project.
 > And write the doc/tasks.
 
 **UI design** (Claude Code wrote the Claude Design prompt; it is in the log)
@@ -144,14 +142,12 @@ quoted as typed:
 **AI disclosure**
 
 > before starting are you keeping an agent log? the requirement states that readme should include
-> […] We can have the essential prompts in the readme then reference the agent log. What do you
-> think?
+> […] We can have the essential prompts in the readme then reference the agent log.
+
 
 **Running tasks.** Each task started from a short handoff file and an approved plan:
 
 > run @FRESH_PROMPT.md
-
-> Approved, one mark per day, start step 1
 
 **Steering the implementation**
 
@@ -159,8 +155,6 @@ quoted as typed:
 > than making your own weekdays and months
 
 > Test on the connected device first
-
-> ignore the UI differences unless i tell you to. don't need to be perfect for this assignment task
 
 > one thing i think should be improved. after clicking upload, the screen should go the
 > @upload_manager_page.dart.
