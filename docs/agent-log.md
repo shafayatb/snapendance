@@ -841,3 +841,23 @@ asked to authorize the step 9 commit in the conversation, the user chose:
   `0f5e2a3`, `6e6ec5a`, `025542c`, `a097770`, `b7701bf`, `447c3ca`, `99a7726`, `b7bc01b`, and this
   records commit, made by the agent with the user's authorization; merged into `develop` with
   `--no-ff` by the agent.
+
+## 2026-10-14 · Fix: open the Upload Manager after a batch is queued (Claude Code)
+
+> one thing i think should be improved. after clicking upload, the screen should go the @upload_manager_page.dart.
+
+The agent proposed a one-step plan and asked how the new batch should be confirmed; the user
+chose "Just open it (Recommended)" and "Approve, commit and merge".
+
+- **Change:** a successful submit now opens the Upload Manager, where the new batch is listed
+  first. The "Batch of n photos queued" card (C10) and its VIEW button were removed. The
+  empty-batch hint and the failed-capture toast are unchanged.
+- **Test-first evidence:** the widget test `a queued batch opens the Upload Manager` (replacing
+  `a queued batch is announced`) failed first: no "Upload Manager" text, the card was shown.
+- **Device run** (Argent on the Galaxy A04s, debug APK): 2 captured, UPLOAD BATCH (2) opened the
+  Upload Manager with Batch 8 and both rows QUEUED; back returned to the camera at UPLOAD BATCH
+  (0); UPLOAD BATCH (0) showed "Take a photo to start a batch" and stayed on the camera.
+- **Task review:** not run, by the user's triage.
+- **Checks:** `flutter test` 129/129, `flutter analyze` clean, `git diff --check` clean.
+- **Git:** `fix/07-open-upload-manager-on-submit` from `develop` at `b00982b`; one commit made by
+  the agent with the user's authorization; merged into `develop` with `--no-ff` by the agent.

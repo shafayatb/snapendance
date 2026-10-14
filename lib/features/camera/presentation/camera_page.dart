@@ -30,12 +30,6 @@ abstract final class CameraColors {
   static const shutterBusyFill = Color(0xFFC9D0DA);
   static const disabledButton = Color(0x1FFFFFFF);
   static const onDisabledButton = Color(0x80FFFFFF);
-  // The light "Batch queued" card (C10).
-  static const bannerSurface = Color(0xFFE6EAF1);
-  static const onBanner = Color(0xFF13224A);
-  static const onBannerVariant = Color(0xFF4A5670);
-  static const bannerSuccess = Color(0xFF17804A);
-  static const bannerAction = Color(0xFF1D5BD6);
 }
 
 /// Controls are dimmed to this while a photo is being saved (C6).
@@ -68,7 +62,7 @@ class CameraView extends StatefulWidget {
 }
 
 class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
-  // A message under the top bar: the C10 card or a C7-style toast.
+  // A C7-style toast under the top bar.
   Widget? _topMessage;
   Timer? _topMessageTimer;
 
@@ -96,17 +90,10 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   void _showBatchNotice(BatchNotice notice) {
     switch (notice.kind) {
       case BatchNoticeKind.batchQueued:
-        _showTopMessage(
-          _QueuedCard(
-            count: notice.count,
-            onView: () {
-              _topMessageTimer?.cancel();
-              setState(() => _topMessage = null);
-              Navigator.of(context).push(UploadManagerPage.route());
-            },
-          ),
-          const Duration(seconds: 4),
-        );
+        // The new batch at the top of the Upload Manager is the confirmation.
+        _topMessageTimer?.cancel();
+        setState(() => _topMessage = null);
+        Navigator.of(context).push(UploadManagerPage.route());
       case BatchNoticeKind.captureFailed:
         _showTopMessage(
           const _Toast(
@@ -291,79 +278,6 @@ class _Toast extends StatelessWidget {
                 fontSize: 15,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// C10: shown for 4 s after a batch is submitted.
-class _QueuedCard extends StatelessWidget {
-  const _QueuedCard({required this.count, required this.onView});
-
-  final int count;
-  final VoidCallback onView;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-      decoration: BoxDecoration(
-        color: CameraColors.bannerSurface,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x59000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.check_circle_rounded,
-            color: CameraColors.bannerSuccess,
-            size: 22,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Batch of $count ${count == 1 ? 'photo' : 'photos'} queued',
-                  style: const TextStyle(
-                    color: CameraColors.onBanner,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Uploads retry automatically when online.',
-                  style: TextStyle(
-                    color: CameraColors.onBannerVariant,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: onView,
-            style: TextButton.styleFrom(
-              foregroundColor: CameraColors.bannerAction,
-              minimumSize: const Size(48, 48),
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.56,
-              ),
-            ),
-            child: const Text('VIEW'),
           ),
         ],
       ),
