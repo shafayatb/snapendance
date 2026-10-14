@@ -243,7 +243,7 @@ Conventions:
 - **Claude:** started this log, backfilled from the two Claude Code session transcripts, and
   marked the essential prompts.
 
-### Task 01, step 1: Home replaces the counter
+### Task 01, step 1: Home replaces the counter · Essential
 
 > committed, plan approved, start step 1
 
@@ -275,7 +275,7 @@ Conventions:
 - **Decided by the developer:** Attendance subtitle shortened to "Office setup and check-in"
   (fits on one line on the 360 dp screen).
 
-### Task 01, step 2: Flutter theme and fonts
+### Task 01, step 2: Flutter theme and fonts · Essential
 
 > start step 2
 
@@ -844,6 +844,8 @@ asked to authorize the step 9 commit in the conversation, the user chose:
 
 ## 2026-10-14 · Fix: open the Upload Manager after a batch is queued (Claude Code)
 
+### Open the Upload Manager after submit · Essential
+
 > one thing i think should be improved. after clicking upload, the screen should go the @upload_manager_page.dart.
 
 The agent proposed a one-step plan and asked how the new batch should be confirmed; the user
@@ -901,3 +903,46 @@ differently, and kept their uncommitted `.claude/hooks/git_guard.py` change out 
   `1048f4c`, `e11b6eb`, `2e8f878`, `f8e31d4`, `d4f7330`, `ef7009f`, `d1cca5d`, `5c17458`,
   `d8d9416`, and this records commit, made by the agent with the user's authorization; merged
   into `develop` with `--no-ff` by the agent.
+
+## 2026-10-14 · Task 11: submission (Claude Code)
+
+The user's prompts for this task are not logged, at the user's request. The plan
+(`docs/plans/2026-10-14-11-submission.md`, S1-S9) was approved with the user's changes: they
+created the keystore and `android/key.properties` themselves, chose Google Drive for the APK, had
+the Codex RTK import removed from `AGENTS.md`, and had the deadline-triage prompts left out of the
+README. The user also trimmed the README's quoted prompts by hand.
+
+- **Changes:** release signing from `android/key.properties` with a debug-key fallback; local-only
+  links in `AGENTS.md` and `product.md` turned into plain text; the README rewritten (description,
+  structure and Cubits, AI usage, run steps, screenshots and GIFs, background-upload notes, known
+  limitations, unverified behavior); 14 screenshots and GIFs in `docs/screenshots/` with the
+  coordinates pixelated.
+- **Signing evidence:** without `key.properties` the release APK carried the same SHA-256 as the
+  local debug keystore; with it, `apksigner` showed the user's upload certificate.
+- **Release run** (signed `app-release.apk` 1.0.0, clean install, Galaxy A04s, Android 14):
+  location denied then granted; office saved at ±20 m; weak GPS (±40-55 m indoors) blocked a mark;
+  marked at 29 m; location services off showed the blocker and kept the mark; the user walked to
+  67 m: OUT OF RANGE with the button locked; camera denied then granted; pinch to 2.5× with the
+  slider following, slider to 5.9×, presets, tap focus ring, flash Off/Auto/On; batch 1 uploaded in
+  about 10 s (WorkManager and the Dart entry point survive R8); two batches queued in airplane mode
+  showed OFFLINE and uploaded by themselves when it was turned off; a batch queued offline uploaded
+  with the launcher in front (worker started 3 s after the network returned, `SUCCESS`); Fail once
+  showed RETRYING 1/5 and uploaded after the 30 s backoff. Some photos came out black: the lens was
+  covered; captures after the sheet, a background return, and the Upload Manager were all normal,
+  and `dumpsys media.camera` showed the client connected throughout.
+- **Not verified on the phone:** listed in the README (swipe-away and process recreation during
+  uploads, Timeout and Permanent failure, manual Retry/Remove, flash firing, start-up and storage
+  errors, the 10 s no-fix message, font scaling).
+- **Task review:** one read-only review agent: approve with fixes (three P2, eleven P3). Fixed: the
+  "in range" screenshot actually showed weak GPS (recaptured at 13 m), the AI section overstated
+  per-task reviews and phone checks, and the unverified list was missing; P3 README corrections
+  (zoom presets, camera states, immediate failures, split offline/failure tests, `key.properties`
+  format, `gradlew` note). Not changed: `key.properties` validation and a fallback warning in
+  Gradle (the tested build config was kept), the lock screen visible in the camera shots (the
+  user accepted it).
+- **Checks:** `flutter analyze` clean, `flutter test` 157/157, `:app:testDebugUnitTest` 85/85,
+  `git diff --check` clean. The camera plugin's own bundled unit tests fail under a plain
+  `testDebugUnitTest` (third-party, not run before).
+- **Git:** `feature/11-submission` from `develop` at `2c6971a`; commits by the agent with the
+  user's authorization; merged into `develop` with `--no-ff` by the agent. Merging into `main`,
+  the `v1.0.0` tag, pushing, and the APK upload are left to the user.
