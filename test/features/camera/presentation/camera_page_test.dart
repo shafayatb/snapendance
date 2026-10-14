@@ -61,14 +61,12 @@ void main() {
     when(() => cubit.isCovered).thenReturn(false);
   });
 
-  /// Home with the camera pushed on top, so "Back to home" has somewhere to go.
   Future<void> showCamera(
     WidgetTester tester,
     CameraStatus status, {
     CameraState? state,
     BatchState? batchState,
   }) async {
-    // The design's phone frame, so the controls sit where they do on a phone.
     tester.view
       ..physicalSize = const Size(412, 915)
       ..devicePixelRatio = 1;
@@ -207,13 +205,11 @@ void main() {
     testWidgets('dragging the slider sets the zoom', (tester) async {
       await showReady(tester);
 
-      // Vertical slider: dragging up zooms in.
       await tester.drag(find.byType(Slider), const Offset(0, -100));
       final zoom = verify(() => cubit.setZoom(captureAny())).captured.last;
       expect(zoom, greaterThan(1));
     });
 
-    // The Cubit test "pinch scales the zoom it started from" covers the arithmetic.
     testWidgets('spreading two fingers zooms in, without focusing', (
       tester,
     ) async {
@@ -318,7 +314,6 @@ void main() {
       expect(ring.size, const Size(80, 80));
       expect(ring.center, const Offset(120, 300));
 
-      // Scales in, holds 1.5 s, fades out in 200 ms.
       await tester.pump(const Duration(milliseconds: 1600));
       expect(find.text('FOCUS'), findsOneWidget);
       await tester.pumpAndSettle();
@@ -435,7 +430,6 @@ void main() {
 
       expect(find.byKey(const ValueKey('empty-batch')), findsOneWidget);
       await tester.tap(uploadButton(0));
-      // BatchCubit refuses an empty batch and explains (see the next test).
       verify(() => batch.submit()).called(1);
     });
 

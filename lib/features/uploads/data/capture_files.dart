@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-/// App-owned image storage (plan U2): not the cache, so Android does not clear it.
 class CaptureFiles {
   CaptureFiles(this.directory);
 
@@ -18,7 +17,6 @@ class CaptureFiles {
 
   static final _name = DateFormat("'IMG_'yyyyMMdd_HHmmss_SSS");
 
-  /// Copies the camera's temporary file in, then deletes the temporary file.
   Future<File> save(String temporaryPath, DateTime capturedAt) async {
     await directory.create(recursive: true);
     final base = _name.format(capturedAt);
@@ -29,10 +27,10 @@ class CaptureFiles {
     final saved = await File(temporaryPath).copy(target.path);
     try {
       await File(temporaryPath).delete();
+      return saved;
     } on FileSystemException {
-      // The copy is saved; a leftover temporary file is the system's to clean.
+      return saved;
     }
-    return saved;
   }
 
   Future<bool> exists(String path) => File(path).exists();

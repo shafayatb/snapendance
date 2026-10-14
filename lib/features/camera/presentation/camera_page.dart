@@ -15,7 +15,6 @@ import '../domain/zoom_presets.dart';
 import 'camera_cubit.dart';
 import 'camera_state.dart';
 
-/// Dark camera colors (design C1-C11). The camera is always dark; the rest of the app is light.
 abstract final class CameraColors {
   static const background = Color(0xFF0D1015);
   static const surface = Color(0xFF1E232C);
@@ -32,11 +31,8 @@ abstract final class CameraColors {
   static const onDisabledButton = Color(0x80FFFFFF);
 }
 
-/// Controls are dimmed to this while a photo is being saved (C6).
 const _savingOpacity = 0.38;
 
-/// Opens the Upload Manager over the camera, which is released until it closes. Ignored while
-/// one is already open (a double tap) or a photo is saving, which needs the camera.
 Future<void> _openUploadManager(BuildContext context) async {
   final camera = context.read<CameraCubit>();
   if (camera.isCovered || context.read<BatchCubit>().state.saving) return;
@@ -46,7 +42,6 @@ Future<void> _openUploadManager(BuildContext context) async {
   camera.screenUncovered();
 }
 
-/// `CameraPreviewScreen`: provides [CameraCubit] and starts the camera.
 class CameraPage extends StatelessWidget {
   const CameraPage({super.key, required this.cameraService});
 
@@ -73,7 +68,6 @@ class CameraView extends StatefulWidget {
 }
 
 class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
-  // A C7-style toast under the top bar.
   Widget? _topMessage;
   Timer? _topMessageTimer;
 
@@ -101,7 +95,6 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   void _showBatchNotice(BatchNotice notice) {
     switch (notice.kind) {
       case BatchNoticeKind.batchQueued:
-        // The new batch at the top of the Upload Manager is the confirmation.
         _topMessageTimer?.cancel();
         setState(() => _topMessage = null);
         _openUploadManager(context);
@@ -135,8 +128,6 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
     final cubit = context.read<CameraCubit>();
-    // Released only when the app is no longer visible: the permission dialog makes it
-    // `inactive` without hiding it (plan C8).
     switch (lifecycle) {
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
@@ -250,7 +241,6 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   }
 }
 
-/// "Saving photo n…" while a capture is stored (C6).
 class _SavingToast extends StatelessWidget {
   const _SavingToast();
 
@@ -326,7 +316,6 @@ class _Initializing extends StatelessWidget {
   }
 }
 
-/// Preview (C1) with pinch zoom, tap-to-focus, the zoom slider, and the preset buttons.
 class _LiveCamera extends StatefulWidget {
   const _LiveCamera();
 
@@ -336,7 +325,6 @@ class _LiveCamera extends StatefulWidget {
 
 class _LiveCameraState extends State<_LiveCamera> {
   bool _pinching = false;
-  // Pinch readout (C3): shown while pinching, faded 500 ms after release.
   bool _showReadout = false;
   Timer? _readoutTimer;
 
@@ -347,8 +335,6 @@ class _LiveCameraState extends State<_LiveCamera> {
   }
 
   void _pinchStarted(ScaleStartDetails details) {
-    // One finger also starts a scale gesture; only a pinch changes zoom. A second finger
-    // restarts the gesture, so a pinch always starts here with two pointers.
     if (details.pointerCount < 2) return;
     context.read<CameraCubit>().pinchStarted();
     _readoutTimer?.cancel();
@@ -377,7 +363,6 @@ class _LiveCameraState extends State<_LiveCamera> {
       builder: (context, constraints) => Stack(
         fit: StackFit.expand,
         children: [
-          // A pinch wins the gesture arena over a tap, so pinching never focuses.
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapUp: (details) => context.read<CameraCubit>().tapToFocus(
@@ -427,7 +412,6 @@ class _LiveCameraState extends State<_LiveCamera> {
   }
 }
 
-/// The preview scaled to cover the screen, cropped rather than stretched (plan C3).
 class _CoverPreview extends StatelessWidget {
   const _CoverPreview();
 
@@ -460,7 +444,6 @@ class _FocusRing extends StatelessWidget {
         return Positioned(
           left: marker.position.dx - 40,
           top: marker.position.dy - 40,
-          // A new key restarts the animation for every tap.
           child: _AnimatedFocusRing(key: ValueKey(marker.serial)),
         );
       },
@@ -468,7 +451,6 @@ class _FocusRing extends StatelessWidget {
   }
 }
 
-/// C2: scales 1.2 → 1.0 in 150 ms, holds 1.5 s, fades out in 200 ms.
 class _AnimatedFocusRing extends StatefulWidget {
   const _AnimatedFocusRing({super.key});
 
@@ -532,7 +514,6 @@ class _AnimatedFocusRingState extends State<_AnimatedFocusRing>
                   ),
                 ),
                 const SizedBox(height: 6),
-                // "FOCUS", not the design's "FOCUS LOCKED": focus is not locked (deviation C2).
                 const Text(
                   'FOCUS',
                   style: TextStyle(
@@ -554,7 +535,6 @@ class _AnimatedFocusRingState extends State<_AnimatedFocusRing>
 class _TopBar extends StatelessWidget {
   const _TopBar({this.live = false});
 
-  /// The camera is open: the flash button is shown.
   final bool live;
 
   @override
@@ -583,7 +563,6 @@ class _TopBar extends StatelessWidget {
                   onPressed: () => Navigator.of(context).maybePop(),
                 ),
                 const Spacer(),
-                // Uploads stay reachable when the camera is blocked or still starting.
                 const _UploadsButton(),
                 const SizedBox(width: 8),
                 if (live) ...[const _FlashButton(), const SizedBox(width: 8)],
@@ -601,7 +580,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// The Upload Manager's entry, with the pending-upload badge (C1).
 class _UploadsButton extends StatelessWidget {
   const _UploadsButton();
 
@@ -671,7 +649,6 @@ class _FlashButton extends StatelessWidget {
           CameraFlash.on => (Icons.flash_on_rounded, 'on'),
         };
         return Opacity(
-          // Disabled look, but still tappable so it can explain why (C5).
           opacity: state.flashAvailable ? 1 : 0.38,
           child: _RoundButton(
             icon: state.flashAvailable ? icon : Icons.flash_off_rounded,
@@ -739,7 +716,6 @@ class _ZoomReadout extends StatelessWidget {
   }
 }
 
-/// Vertical slider on the right edge (C1), labeled with the camera's real range.
 class _ZoomSlider extends StatelessWidget {
   const _ZoomSlider();
 
@@ -814,7 +790,6 @@ class _BottomControls extends StatelessWidget {
             children: [
               _OffWhileSaving(child: _ZoomPresets()),
               SizedBox(height: 24),
-              // The flip button's place stays empty: back cameras only (plan C6).
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
@@ -836,7 +811,6 @@ class _BottomControls extends StatelessWidget {
   }
 }
 
-/// Dims [child] and ignores its touches while a photo is being saved (C6).
 class _OffWhileSaving extends StatelessWidget {
   const _OffWhileSaving({required this.child});
 
@@ -858,7 +832,6 @@ class _OffWhileSaving extends StatelessWidget {
   }
 }
 
-/// The newest capture with the batch's count, or a dashed placeholder when empty (C1, C7).
 class _BatchThumbnail extends StatelessWidget {
   const _BatchThumbnail();
 
@@ -946,7 +919,6 @@ class _BatchThumbnail extends StatelessWidget {
   }
 }
 
-/// Takes a photo into the open batch; shows the busy look while it is saved (C6).
 class _ShutterButton extends StatelessWidget {
   const _ShutterButton();
 
@@ -996,7 +968,6 @@ class _ShutterButton extends StatelessWidget {
   }
 }
 
-/// UPLOAD BATCH (n). Looks disabled when empty but still answers, so it can explain (C7).
 class _UploadBatchButton extends StatelessWidget {
   const _UploadBatchButton();
 
@@ -1050,7 +1021,6 @@ class _UploadBatchButton extends StatelessWidget {
   }
 }
 
-/// Rounded zoom buttons (C1, C4). The selected one is white; none is selected between presets.
 class _ZoomPresets extends StatelessWidget {
   const _ZoomPresets();
 
@@ -1129,7 +1099,6 @@ class _ZoomPresetButton extends StatelessWidget {
 
 enum _BlockedAction { allow, settings, retry }
 
-/// C8 (permission) and C9 (camera unavailable).
 class _BlockedState extends StatelessWidget {
   const _BlockedState({
     required this.icon,

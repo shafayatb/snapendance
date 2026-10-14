@@ -241,7 +241,6 @@ void main() {
     ),
     act: (cubit) async {
       await cubit.load();
-      // The worker's isolate writes without announcing it here.
       pending = 7;
       await Future<void>.delayed(const Duration(milliseconds: 40));
     },

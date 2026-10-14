@@ -10,10 +10,6 @@ import '../../features/uploads/presentation/batch_state.dart';
 import '../native/attendance_launcher.dart';
 import '../theme/app_tokens.dart';
 
-/// The app's entry point (design frame H1): a header and one card per feature.
-///
-/// The Attendance card shows a static subtitle. Attendance data is stored by
-/// the native Android screen and is not shared with Flutter.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
@@ -28,10 +24,8 @@ class HomeScreen extends StatelessWidget {
     try {
       await attendanceLauncher.open();
     } on AttendanceLaunchException {
-      // Home may have been replaced while Android was answering.
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
-        // Replaces, rather than queues behind, a message from an earlier tap.
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
@@ -49,7 +43,6 @@ class HomeScreen extends StatelessWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
-        // Opaque, so Android 8-9 (no edge-to-edge) still show the page color.
         systemNavigationBarColor: AppColors.background,
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
@@ -95,7 +88,6 @@ class HomeScreen extends StatelessWidget {
                   builder: (context, pending) => _FeatureCard(
                     icon: Icons.photo_camera_outlined,
                     title: 'Camera & Uploads',
-                    // H2: the pending count, which Flutter owns.
                     subtitle: pending == 0
                         ? 'Capture a batch of photos'
                         : '$pending ${pending == 1 ? 'image' : 'images'} waiting',
@@ -127,7 +119,6 @@ class _FeatureCard extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  /// Set for a status line (H2): the subtitle gets this color and a dot.
   final Color? statusColor;
   final VoidCallback onTap;
 
@@ -141,9 +132,7 @@ class _FeatureCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
-      // Clips the ripple to the rounded corners.
       clipBehavior: Clip.antiAlias,
-      // The card merges its texts into one label; this makes it a button.
       child: Semantics(
         button: true,
         child: InkWell(
@@ -173,7 +162,6 @@ class _FeatureCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // H1 sets card titles at 17 px, between titleMedium and labelLarge.
                         Text(
                           title,
                           style: textTheme.titleMedium?.copyWith(fontSize: 17),

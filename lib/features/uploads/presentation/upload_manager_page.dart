@@ -14,7 +14,6 @@ import '../domain/upload_models.dart';
 import 'uploads_cubit.dart';
 import 'uploads_state.dart';
 
-/// The Upload Manager (U1-U5, light theme), reached only from the camera.
 class UploadManagerPage extends StatelessWidget {
   const UploadManagerPage({super.key});
 
@@ -57,7 +56,6 @@ class _UploadManagerViewState extends State<UploadManagerView>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycle) {
-    // The worker may have uploaded while the app was in the background.
     if (lifecycle == AppLifecycleState.resumed) {
       context.read<UploadsCubit>().appResumed();
     }
@@ -188,7 +186,6 @@ class _ConnectionPill extends StatelessWidget {
   }
 }
 
-/// One list entry: the progress card, a heading, a batch header, an item, or a collapsed line.
 sealed class _Entry {
   const _Entry();
 }
@@ -221,8 +218,6 @@ class _UploadList extends StatelessWidget {
 
   final UploadsState state;
 
-  /// Unfinished items, then the newest synced one; older synced items collapse into a line
-  /// (deviation U1: "n more synced").
   List<_Entry> _entries() {
     final entries = <_Entry>[const _ProgressEntry(), const _HeadingEntry()];
     for (final batch in state.batches) {
@@ -458,45 +453,41 @@ String _size(int bytes) {
   return '${(bytes / 1024).ceil()} KB';
 }
 
-/// The status line's color, icon, and label (U1-U3, with deviations U3).
-(Color, IconData, String) _status(
-  UploadItem item, {
-  required bool offline,
-}) => switch (item.status) {
-  ItemStatus.pending || ItemStatus.retrying when offline => (
-    AppStatusColors.pending,
-    Icons.wifi_off_rounded,
-    'WAITING FOR CONNECTION',
-  ),
-  ItemStatus.pending => (
-    AppStatusColors.queued,
-    Icons.schedule_rounded,
-    'QUEUED',
-  ),
-  ItemStatus.uploading => (
-    AppStatusColors.uploading,
-    Icons.arrow_upward_rounded,
-    'UPLOADING',
-  ),
-  ItemStatus.retrying => (
-    AppStatusColors.pending,
-    Icons.autorenew_rounded,
-    'RETRYING · ATTEMPT ${item.attempts}/$maxUploadAttempts',
-  ),
-  ItemStatus.uploaded => (
-    AppStatusColors.synced,
-    Icons.check_circle_rounded,
-    'SYNCED ${DateFormat('HH:mm').format(item.uploadedAt!)}',
-  ),
-  ItemStatus.failed => (
-    AppStatusColors.failed,
-    Icons.error_rounded,
-    // An exhausted item's stored error already starts with "Failed after 5 attempts".
-    (item.lastError ?? '').startsWith('Failed')
-        ? item.lastError!.toUpperCase()
-        : 'FAILED · ${(item.lastError ?? 'unknown error').toUpperCase()}',
-  ),
-};
+(Color, IconData, String) _status(UploadItem item, {required bool offline}) =>
+    switch (item.status) {
+      ItemStatus.pending || ItemStatus.retrying when offline => (
+        AppStatusColors.pending,
+        Icons.wifi_off_rounded,
+        'WAITING FOR CONNECTION',
+      ),
+      ItemStatus.pending => (
+        AppStatusColors.queued,
+        Icons.schedule_rounded,
+        'QUEUED',
+      ),
+      ItemStatus.uploading => (
+        AppStatusColors.uploading,
+        Icons.arrow_upward_rounded,
+        'UPLOADING',
+      ),
+      ItemStatus.retrying => (
+        AppStatusColors.pending,
+        Icons.autorenew_rounded,
+        'RETRYING · ATTEMPT ${item.attempts}/$maxUploadAttempts',
+      ),
+      ItemStatus.uploaded => (
+        AppStatusColors.synced,
+        Icons.check_circle_rounded,
+        'SYNCED ${DateFormat('HH:mm').format(item.uploadedAt!)}',
+      ),
+      ItemStatus.failed => (
+        AppStatusColors.failed,
+        Icons.error_rounded,
+        (item.lastError ?? '').startsWith('Failed')
+            ? item.lastError!.toUpperCase()
+            : 'FAILED · ${(item.lastError ?? 'unknown error').toUpperCase()}',
+      ),
+    };
 
 class _ItemRow extends StatelessWidget {
   const _ItemRow({required this.item, required this.offline});
@@ -624,7 +615,6 @@ class _Thumbnail extends StatelessWidget {
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      // Decoded at display size, so long lists stay light.
       child: Image.file(
         File(item.filePath),
         width: _size,
@@ -637,7 +627,6 @@ class _Thumbnail extends StatelessWidget {
   }
 }
 
-/// U5.
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
@@ -685,7 +674,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-/// Back to the camera, whose open batch is where the next photos go.
 class _StartNewBatchBar extends StatelessWidget {
   const _StartNewBatchBar();
 

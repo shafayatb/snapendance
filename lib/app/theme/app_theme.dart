@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'app_tokens.dart';
 
-/// The light theme for Home, Attendance entry, and the Upload Manager.
 ThemeData buildLightTheme() {
   const colorScheme = ColorScheme.light(
     primary: AppColors.primary,
     onPrimary: AppColors.onPrimary,
     primaryContainer: AppColors.primaryContainer,
     onPrimaryContainer: AppColors.primary,
-    // The design has one accent; map the other roles to it, not to M3's teal defaults.
     secondary: AppColors.primary,
     onSecondary: AppColors.onPrimary,
     secondaryContainer: AppColors.primaryContainer,
@@ -34,17 +32,14 @@ ThemeData buildLightTheme() {
     scaffoldBackgroundColor: AppColors.background,
     fontFamily: AppFonts.sans,
     textTheme: _textTheme,
-    // Elevation and shape stay per card, so Card.outlined keeps its border.
     cardTheme: CardThemeData(
       color: AppColors.surface,
-      // Approximates the design's light Level 1 shadow.
       shadowColor: AppColors.onSurface.withValues(alpha: 0.25),
     ),
     extensions: const [StatusColors.light],
   );
 }
 
-// Type scale from the design system; letter spacing converted from em to px.
 const _textTheme = TextTheme(
   headlineLarge: TextStyle(
     fontSize: 32,
@@ -101,7 +96,6 @@ const _textTheme = TextTheme(
   ),
 );
 
-/// A foreground color and its container (chip or badge background).
 @immutable
 class StatusColorPair {
   const StatusColorPair(this.color, this.container);
@@ -117,9 +111,6 @@ class StatusColorPair {
   }
 }
 
-/// Status colors for attendance range and upload states.
-///
-/// Read with `Theme.of(context).extension<StatusColors>()!`.
 @immutable
 class StatusColors extends ThemeExtension<StatusColors> {
   const StatusColors({

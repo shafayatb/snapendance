@@ -1,10 +1,6 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
-/// Opens the upload queue database (plan U2). Tests pass an FFI [factory] and a temporary [path].
-///
-/// The foreground app and the background worker open it separately, so a writer waits for the
-/// other's lock instead of failing at once.
 Future<Database> openUploadDatabase({
   DatabaseFactory? factory,
   String? path,

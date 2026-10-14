@@ -160,7 +160,6 @@ void main() {
       build: () => CameraCubit(service),
       act: (cubit) async {
         await cubit.start();
-        // Android's check cannot report a permanent denial once asked.
         await cubit.openAppSettings();
         await cubit.screenCovered();
         await cubit.screenUncovered();
@@ -205,7 +204,6 @@ void main() {
       },
       expect: () => [ready, const CameraState(), ready],
       verify: (_) {
-        // Once on pause, once when blocTest closes the cubit.
         verify(() => session.close()).called(2);
         verify(() => service.open()).called(2);
       },
@@ -240,7 +238,6 @@ void main() {
       build: () => CameraCubit(service),
       act: (cubit) async {
         final opening = cubit.start();
-        // Wait until the camera is being opened, then leave the app.
         await untilCalled(() => service.open());
         await cubit.appPaused();
         opened.complete(session);
@@ -264,7 +261,6 @@ void main() {
       act: (cubit) async {
         final starting = cubit.start();
         await untilCalled(() => service.requestPermission());
-        // The dialog paused the activity; it resumes before the answer arrives.
         await cubit.appResumed();
         when(
           () => service.permission(),
@@ -284,7 +280,6 @@ void main() {
       act: (cubit) async {
         final starting = cubit.start();
         await untilCalled(() => service.open());
-        // On the phone, the resume after the permission dialog can arrive after the answer.
         final resuming = cubit.appResumed();
         opened.complete(session);
         await Future.wait([starting, resuming]);
@@ -311,7 +306,6 @@ void main() {
         await cubit.appPaused();
         final resuming = cubit.appResumed();
         await pumpEventQueue();
-        // The camera plugin cannot initialize two cameras at once.
         verify(() => service.open()).called(1);
         opened.complete(session);
         await Future.wait([starting, resuming]);
@@ -326,7 +320,6 @@ void main() {
     blocTest<CameraCubit, CameraState>(
       'a resume after a permanent denial keeps the app settings action',
       setUp: () {
-        // Android reports a permanent denial only as the answer to a request.
         when(
           () => service.permission(),
         ).thenAnswer((_) async => CameraPermission.denied);
@@ -337,7 +330,6 @@ void main() {
       build: () => CameraCubit(service),
       act: (cubit) async {
         await cubit.start();
-        // On the phone, the resume after the dialog can arrive after the answer.
         await cubit.appResumed();
       },
       expect: () => [
@@ -468,7 +460,6 @@ void main() {
       build: () => CameraCubit(service),
       act: (cubit) async {
         await cubit.start();
-        // 3:4 preview in 400 × 800: 100 px cropped each side, so x = 100/600.
         cubit.tapToFocus(const Offset(0, 400), const Size(400, 800));
       },
       skip: 1,

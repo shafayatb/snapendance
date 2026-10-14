@@ -4,8 +4,6 @@ import '../features/uploads/data/upload_queue_repository.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_tokens.dart';
 
-/// Opens upload storage and builds the app. Only a database that cannot open stops start-up;
-/// the leftover-file check and WorkManager setup run again on the next launch.
 Future<Widget> startApp({
   required Future<UploadQueueRepository> Function() openUploadQueue,
   required Future<void> Function() initializeScheduler,
@@ -13,7 +11,6 @@ Future<Widget> startApp({
 }) async {
   final uploadQueue = await openUploadQueue();
   try {
-    // Before the camera can capture (plan U3).
     await uploadQueue.reconcile();
   } on Exception catch (error) {
     debugPrint('Checking stored captures failed: $error');
@@ -21,14 +18,11 @@ Future<Widget> startApp({
   try {
     await initializeScheduler();
   } on Object catch (error) {
-    // Uploads then wait for the next launch; capture and the queue still work.
     debugPrint('Setting up background uploads failed: $error');
   }
   return buildApp(uploadQueue);
 }
 
-/// Runs [start] and shows its app; if it throws, a start-up error with Try again, so a storage
-/// failure never leaves the app on its launch screen.
 class AppStartup extends StatefulWidget {
   const AppStartup({super.key, required this.start});
 
@@ -47,7 +41,6 @@ class _AppStartupState extends State<AppStartup> {
       future: _app,
       builder: (context, snapshot) {
         if (snapshot.hasData) return snapshot.requireData;
-        // A retry keeps the last error in its snapshot until it settles.
         if (snapshot.hasError &&
             snapshot.connectionState == ConnectionState.done) {
           debugPrint('Start-up failed: ${snapshot.error}');

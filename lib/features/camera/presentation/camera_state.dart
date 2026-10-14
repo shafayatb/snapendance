@@ -12,7 +12,6 @@ enum CameraStatus {
   ready,
 }
 
-/// Where the focus ring is drawn (view pixels). [serial] restarts its animation on a new tap.
 class FocusMarker extends Equatable {
   const FocusMarker(this.position, this.serial);
 
@@ -25,7 +24,6 @@ class FocusMarker extends Equatable {
 
 enum CameraNoticeKind { flashUnavailable, focusUnsupported }
 
-/// A one-off toast. [serial] makes a repeated notice a new state.
 class CameraNotice extends Equatable {
   const CameraNotice(this.kind, this.serial);
 
@@ -52,7 +50,6 @@ class CameraState extends Equatable {
 
   final CameraStatus status;
 
-  /// The one zoom value shared by pinch, slider, and buttons (plan C4).
   final double zoom;
   final double minZoom;
   final double maxZoom;

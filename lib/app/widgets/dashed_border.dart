@@ -2,7 +2,6 @@ import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
 
-/// A dashed rounded outline (empty batch C7, missing file U1). Flutter has no dashed border.
 class DashedBorder extends StatelessWidget {
   const DashedBorder({
     super.key,

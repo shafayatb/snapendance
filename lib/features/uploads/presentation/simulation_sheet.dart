@@ -5,7 +5,6 @@ import '../domain/upload_models.dart';
 import 'batch_cubit.dart';
 import 'batch_state.dart';
 
-// The sheet is part of the always-dark camera (C11).
 const _sheetColor = Color(0xFF1E232C);
 const _text = Color(0xFFE6EAF1);
 const _textVariant = Color(0xFF9BA5B6);
@@ -14,9 +13,7 @@ const _mockBadge = Color(0xFF3A2E14);
 const _mockBadgeText = Color(0xFFF2B65A);
 const _primary = Color(0xFF2F66DC);
 
-/// Opens the "Upload simulation" sheet (C11). It ships in release, labeled MOCK API (plan U13).
 Future<void> showSimulationSheet(BuildContext context) {
-  // The sheet is its own route; hand it the caller's Cubit.
   final cubit = context.read<BatchCubit>();
   return showModalBottomSheet<void>(
     context: context,

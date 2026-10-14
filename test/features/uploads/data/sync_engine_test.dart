@@ -11,7 +11,6 @@ import 'package:snapendance/features/uploads/data/upload_queue_repository.dart';
 import 'package:snapendance/features/uploads/domain/upload_models.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Answers each upload from [script] (by item id, then call order); records every call.
 class ScriptedUploadApi implements UploadApi {
   ScriptedUploadApi([this.script]);
 
@@ -62,7 +61,6 @@ void main() {
     return repository.addCapture(file.path);
   }
 
-  /// A submitted batch of [count] photos.
   Future<List<UploadItem>> queueBatch(int count) async {
     final items = [for (var i = 0; i < count; i++) await capture()];
     await repository.submitOpenBatch();

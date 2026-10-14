@@ -118,7 +118,6 @@ void main() {
     build: () => UploadsCubit(repository, scheduler, connectivity),
     act: (cubit) async {
       await cubit.load();
-      // A run outside the screen, as the background worker makes it.
       await SyncEngine(repository, AcceptingApi()).run();
       await cubit.load();
     },

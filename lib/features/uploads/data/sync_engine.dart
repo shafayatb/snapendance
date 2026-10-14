@@ -6,12 +6,6 @@ import '../domain/upload_models.dart';
 import 'upload_api.dart';
 import 'upload_queue_repository.dart';
 
-/// Uploads queued images (plan U5). Independent of any Cubit: the background worker builds its
-/// own instance.
-///
-/// A run claims one item at a time, uploads it, and records the outcome. It tries each item at
-/// most once, so a failing item waits for a later run (WorkManager's backoff) instead of
-/// looping, and stops early when there is no network at all.
 class SyncEngine {
   SyncEngine(
     this._repository,
@@ -20,20 +14,16 @@ class SyncEngine {
     this.timeout = const Duration(seconds: 30),
   }) : _clock = clock ?? DateTime.now;
 
-  /// Longer than [timeout], so a live run never loses its claim; a crashed run's claim expires
-  /// and another run takes the item.
   static const claimDuration = Duration(minutes: 2);
 
   final UploadQueueRepository _repository;
   final UploadApi _api;
   final DateTime Function() _clock;
 
-  /// A slow connection becomes a retryable failure (approved: 30 s).
   final Duration timeout;
 
   static final _random = Random.secure();
 
-  /// Returns whether unfinished work remains for a later run.
   Future<bool> run() async {
     final token = List.generate(
       16,

@@ -12,7 +12,6 @@ import 'features/uploads/data/upload_queue_repository.dart';
 import 'features/uploads/data/upload_scheduler.dart';
 
 void main() {
-  // Draw behind the system bars from Android 10 (API 29); Android 15+ enforces it.
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 

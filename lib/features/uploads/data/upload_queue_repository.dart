@@ -6,7 +6,6 @@ import 'package:sqflite/sqflite.dart';
 import '../domain/upload_models.dart';
 import 'capture_files.dart';
 
-/// A capture could not be stored; nothing was recorded.
 class CaptureSaveException implements Exception {
   const CaptureSaveException(this.cause);
 
@@ -16,10 +15,6 @@ class CaptureSaveException implements Exception {
   String toString() => 'CaptureSaveException: $cause';
 }
 
-/// The upload queue: captured images, their batches, and their upload state (plan U1-U4).
-///
-/// The database is the source of truth. [changes] announces writes made through this instance;
-/// writes from the background worker's isolate are seen by reading again.
 class UploadQueueRepository {
   UploadQueueRepository(this._db, this._files, {DateTime Function()? clock})
     : _clock = clock ?? DateTime.now;
@@ -31,9 +26,6 @@ class UploadQueueRepository {
 
   Stream<void> get changes => _changes.stream;
 
-  /// Copies the camera's temporary file into app storage, then records it in the open batch.
-  /// Throws [CaptureSaveException]; a failure leaves no row behind, and the copied file is
-  /// deleted where the file system allows.
   Future<UploadItem> addCapture(String temporaryPath) async {
     final capturedAt = _clock();
     final File saved;
@@ -107,7 +99,6 @@ class UploadQueueRepository {
     );
   }
 
-  /// Freezes the open batch as queued and returns its size; 0 when there is nothing to submit.
   Future<int> submitOpenBatch() async {
     final submitted = await _db.transaction((txn) async {
       final rows = await txn.rawQuery(
@@ -116,7 +107,6 @@ class UploadQueueRepository {
         [BatchStatus.open.name],
       );
       if (rows.isEmpty) return 0;
-      // Guarded by status, so a second submit that read the same open batch changes nothing.
       final updated = await txn.update(
         'batches',
         {
@@ -132,7 +122,6 @@ class UploadQueueRepository {
     return submitted;
   }
 
-  /// Submitted batches, newest first, each with its items in capture order.
   Future<List<QueuedBatch>> queuedBatches() async {
     final rows = await _db.rawQuery(
       'SELECT i.*, b.submitted_at AS batch_submitted_at FROM items i '
@@ -157,7 +146,6 @@ class UploadQueueRepository {
     return batches;
   }
 
-  /// Items of submitted batches that are not uploaded yet, failed ones included (plan U12).
   Future<int> pendingCount() async {
     final rows = await _db.rawQuery(
       'SELECT COUNT(*) AS count FROM items i JOIN batches b ON b.id = i.batch_id '
@@ -167,8 +155,6 @@ class UploadQueueRepository {
     return rows.single['count'] as int;
   }
 
-  /// Startup repair (plan U3). Run before the camera can capture: a file copied but not yet
-  /// recorded would look like an orphan.
   Future<void> reconcile() async {
     final rows = await _db.rawQuery(
       'SELECT i.id AS id, i.file_path AS file_path, i.status AS status, '
@@ -204,11 +190,6 @@ class UploadQueueRepository {
     if (changed) _changes.add(null);
   }
 
-  /// Claims the next item a run may upload (plan U5): a pending or retrying item of a queued
-  /// batch, or one whose earlier claim expired. Returns null when none is left.
-  ///
-  /// The claim is a compare-and-set: two runs may pick the same candidate, but the update
-  /// re-checks it, so only one of them gets it. No transaction stays open during the upload.
   Future<UploadItem?> claimNext({
     required String token,
     required DateTime now,
@@ -246,7 +227,6 @@ class UploadQueueRepository {
           ...claimableArgs,
         ],
       );
-      // Another run took it between the read and the update: look again.
       if (claimed == 0) continue;
       final rows = await _db.query('items', where: 'id = ?', whereArgs: [id]);
       _changes.add(null);
@@ -254,7 +234,6 @@ class UploadQueueRepository {
     }
   }
 
-  /// Records a confirmed upload; ignored if [token] no longer holds the claim.
   Future<void> recordSuccess(int id, String token, DateTime now) async {
     await _db.rawUpdate(
       'UPDATE items SET status = ?, attempts = attempts + 1, uploaded_at = ?, '
@@ -271,8 +250,6 @@ class UploadQueueRepository {
     _changes.add(null);
   }
 
-  /// Records a failed attempt (plan U4): retrying while attempts remain, otherwise failed with
-  /// the last error. Ignored if [token] no longer holds the claim.
   Future<void> recordFailure(
     int id,
     String token,
@@ -304,8 +281,6 @@ class UploadQueueRepository {
     _changes.add(null);
   }
 
-  /// Whether a later run has anything to do: items of queued batches still pending, retrying,
-  /// or claimed.
   Future<bool> hasUnfinishedWork() async {
     final rows = await _db.rawQuery(
       'SELECT COUNT(*) AS count FROM items i JOIN batches b ON b.id = i.batch_id '
@@ -320,7 +295,6 @@ class UploadQueueRepository {
     return (rows.single['count'] as int) > 0;
   }
 
-  /// Whether the most recent upload attempt failed (plan U11).
   Future<bool> lastAttemptFailed() async {
     final rows = await _db.query(
       'items',
@@ -332,7 +306,6 @@ class UploadQueueRepository {
     return rows.isNotEmpty && rows.single['status'] != ItemStatus.uploaded.name;
   }
 
-  /// Manual Retry on a Failed item (plan U10): back to pending with a fresh attempt count.
   Future<void> retryItem(int id) async {
     await _db.update(
       'items',
@@ -343,7 +316,6 @@ class UploadQueueRepository {
     _changes.add(null);
   }
 
-  /// Remove on an item whose image is missing (plan U10): deletes its queue record.
   Future<void> removeItem(int id) async {
     final rows = await _db.query(
       'items',

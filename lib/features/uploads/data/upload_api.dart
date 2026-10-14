@@ -2,8 +2,6 @@ import 'dart:async';
 
 import '../domain/upload_models.dart';
 
-/// The server refused or could not be reached. [offline]: no connection at all, so the rest of
-/// a run would fail the same way. [permanent]: retrying cannot help.
 class UploadFailure implements Exception {
   const UploadFailure(
     this.message, {
@@ -19,15 +17,10 @@ class UploadFailure implements Exception {
   String toString() => 'UploadFailure: $message';
 }
 
-/// The upload boundary. Completes when the server confirms the item; throws [UploadFailure].
-/// May never answer: the caller applies the timeout.
 abstract interface class UploadApi {
   Future<void> upload(UploadItem item);
 }
 
-/// The employer supplies no API, so uploads are answered by this mock (design C11). Each
-/// scenario is repeatable: "fail once" fails an item's first attempt by its stored count, so it
-/// behaves the same after a restart or in the background worker.
 class MockUploadApi implements UploadApi {
   MockUploadApi(
     this.scenario, {
@@ -36,7 +29,6 @@ class MockUploadApi implements UploadApi {
 
   final MockScenario scenario;
 
-  /// Simulated round trip, so uploads are visible on screen.
   final Duration latency;
 
   @override
@@ -50,7 +42,6 @@ class MockUploadApi implements UploadApi {
           throw const UploadFailure('Server error (mock)');
         }
       case MockScenario.timeout:
-        // No reply at all; the engine's 30 s timeout ends the attempt.
         await Completer<void>().future;
       case MockScenario.noNetwork:
         throw const UploadFailure('No network', offline: true);

@@ -1,7 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-/// Whether the device has a network connection: a hint for the pill and for scheduling, never
-/// proof of Internet access (plan U11).
 abstract interface class ConnectivityService {
   Future<bool> isConnected();
 

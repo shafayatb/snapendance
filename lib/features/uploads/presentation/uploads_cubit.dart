@@ -9,10 +9,6 @@ import '../data/upload_scheduler.dart';
 import '../domain/upload_models.dart';
 import 'uploads_state.dart';
 
-/// The Upload Manager's state, read from the durable queue.
-///
-/// The background worker writes from another isolate, so while the screen is open the queue is
-/// read again every [pollInterval], on resume, and after writes made in this isolate.
 class UploadsCubit extends Cubit<UploadsState> {
   UploadsCubit(
     this._repository,
@@ -30,7 +26,6 @@ class UploadsCubit extends Cubit<UploadsState> {
   Timer? _poll;
   StreamSubscription<void>? _changes;
 
-  /// Loads now and keeps the list and the connection pill current while the screen is open.
   Future<void> start() async {
     _changes = _repository.changes.listen((_) => load());
     _poll = Timer.periodic(pollInterval, (_) => load());
@@ -42,12 +37,10 @@ class UploadsCubit extends Cubit<UploadsState> {
   Future<void> _connectionChanged(bool connected) async {
     final regained = connected && !_connected;
     _connected = connected;
-    // WorkManager also waits for the network; asking again makes sure a run is queued.
     if (regained) await _scheduleUploads();
     await load();
   }
 
-  /// A failed schedule is left to the periodic recovery task; the item itself is stored.
   Future<void> _scheduleUploads() async {
     try {
       await _scheduler.scheduleUploads();
@@ -56,7 +49,6 @@ class UploadsCubit extends Cubit<UploadsState> {
     }
   }
 
-  /// A failed read keeps the list shown; the next poll tries again.
   Future<void> load() async {
     final List<QueuedBatch> batches;
     final bool failing;
@@ -95,7 +87,6 @@ class UploadsCubit extends Cubit<UploadsState> {
 
   Future<void> remove(int itemId) => _act(() => _repository.removeItem(itemId));
 
-  /// Runs a Retry or Remove tap; a failure is counted so the screen can say so.
   Future<void> _act(Future<void> Function() action) async {
     try {
       await action();

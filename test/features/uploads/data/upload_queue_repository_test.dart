@@ -8,7 +8,6 @@ import 'package:snapendance/features/uploads/data/upload_queue_repository.dart';
 import 'package:snapendance/features/uploads/domain/upload_models.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Fails every copy, as a full disk or a vanished temporary file would.
 class FailingCaptureFiles extends CaptureFiles {
   FailingCaptureFiles(super.directory);
 
@@ -54,7 +53,6 @@ void main() {
 
   var shot = 0;
 
-  /// A photo as the camera plugin leaves it: a temporary file.
   Future<String> pluginPhoto([String content = 'jpeg bytes']) async {
     final file = File(p.join(temp.path, 'plugin', 'CAP${shot++}.jpg'));
     await file.create(recursive: true);

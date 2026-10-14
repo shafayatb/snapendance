@@ -4,8 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:snapendance/features/camera/domain/focus_mapping.dart';
 
 void main() {
-  // A 3:4 portrait preview shown in a 400 × 800 view: cover scaling makes it 600 × 800, so
-  // 100 px are cropped on each side.
   const view = Size(400, 800);
   const aspect = 3 / 4;
 
@@ -31,7 +29,6 @@ void main() {
   test(
     'a preview wider than the view crop is vertical when the view is wider',
     () {
-      // 9:16 preview in a 400 × 600 view: 400 × 711.1, cropped 55.6 px top and bottom.
       final point = mapTapToPreviewPoint(
         const Offset(200, 0),
         const Size(400, 600),

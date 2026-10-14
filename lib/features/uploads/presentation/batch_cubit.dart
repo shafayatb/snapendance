@@ -8,10 +8,6 @@ import '../data/upload_scheduler.dart';
 import '../domain/upload_models.dart';
 import 'batch_state.dart';
 
-/// The open batch the camera fills, the pending-upload count, and the mock scenario (plan U9).
-///
-/// Provided app-wide, so Home and the camera show the same stored counts. The shutter passes the
-/// camera's `takePicture`, so this Cubit and `CameraCubit` do not hold each other.
 class BatchCubit extends Cubit<BatchState> {
   BatchCubit(
     this._repository,
@@ -19,8 +15,6 @@ class BatchCubit extends Cubit<BatchState> {
     Duration pollInterval = const Duration(seconds: 3),
   }) : super(const BatchState()) {
     _changes = _repository.changes.listen((_) => load());
-    // The background worker writes from its own isolate, which [changes] does not see; a
-    // count query every few seconds keeps the badge and Home honest.
     _poll = Timer.periodic(pollInterval, (_) => load());
   }
 
@@ -31,8 +25,6 @@ class BatchCubit extends Cubit<BatchState> {
   int _noticeSerial = 0;
   bool _submitting = false;
 
-  /// Reads the counts again from storage. A failed read keeps the counts shown; the next poll
-  /// tries again.
   Future<void> load() async {
     try {
       final stored = await _read();
@@ -42,8 +34,6 @@ class BatchCubit extends Cubit<BatchState> {
     }
   }
 
-  /// App start and resume: refreshes the counts (the worker may have uploaded) and makes sure
-  /// unfinished uploads have a scheduled run, in case one was lost.
   Future<void> appResumed() async {
     await load();
     try {
@@ -53,7 +43,6 @@ class BatchCubit extends Cubit<BatchState> {
     }
   }
 
-  /// A failed schedule is left to the periodic recovery task and the next resume.
   Future<void> _scheduleUploads() async {
     try {
       await _scheduler.scheduleUploads();
@@ -62,15 +51,12 @@ class BatchCubit extends Cubit<BatchState> {
     }
   }
 
-  /// Takes a photo and stores it in the open batch. Ignored while one is being saved.
   Future<void> capture(Future<String> Function() takePicture) async {
     if (state.saving) return;
     emit(state.copyWith(saving: true));
     try {
       await _repository.addCapture(await takePicture());
     } on Object catch (error) {
-      // Not only CameraCaptureException and CaptureSaveException: a camera released mid-capture
-      // can throw a plugin error, and a locked shutter would need an app restart.
       debugPrint('Capture failed: $error');
       return _notify(BatchNoticeKind.captureFailed);
     }
@@ -78,7 +64,6 @@ class BatchCubit extends Cubit<BatchState> {
       final stored = await _read();
       if (!isClosed) emit(_withStored(stored).copyWith(saving: false));
     } on Object catch (error) {
-      // The photo is stored; the next poll shows it.
       debugPrint('Reading the batch after a capture failed: $error');
       if (!isClosed) emit(state.copyWith(saving: false));
     }
@@ -107,8 +92,6 @@ class BatchCubit extends Cubit<BatchState> {
     );
   }
 
-  /// Queues the open batch. An empty batch only explains how to start one (C7); ignored while
-  /// saving or while a submit runs.
   Future<void> submit() async {
     if (_submitting || state.saving) return;
     if (state.openCount == 0) {
@@ -139,7 +122,6 @@ class BatchCubit extends Cubit<BatchState> {
         final stored = await _read();
         if (!isClosed) emit(_withStored(stored).copyWith(notice: queued));
       } on Exception catch (error) {
-        // The batch is queued; the next poll shows the new counts.
         debugPrint('Reading the batch after a submit failed: $error');
         if (!isClosed && queued != null) emit(state.copyWith(notice: queued));
       }
@@ -148,7 +130,6 @@ class BatchCubit extends Cubit<BatchState> {
     }
   }
 
-  /// Stores how the mock server answers the next uploads (C11).
   Future<void> setScenario(MockScenario scenario) async {
     await _repository.setMockScenario(scenario);
     if (!isClosed) emit(state.copyWith(scenario: scenario));

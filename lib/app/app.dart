@@ -28,7 +28,6 @@ class SnapendanceApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Above the navigator, so Home and every route share the stored counts.
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider.value(value: uploadQueue),
@@ -53,7 +52,6 @@ class SnapendanceApp extends StatelessWidget {
   }
 }
 
-/// Tells [BatchCubit] when the app returns to the foreground (plan U8).
 class _ResumeUploads extends StatefulWidget {
   const _ResumeUploads({required this.child});
 

@@ -12,8 +12,6 @@ import 'package:snapendance/features/camera/data/camera_service.dart';
 import 'package:snapendance/features/uploads/presentation/batch_cubit.dart';
 import 'package:snapendance/features/uploads/presentation/batch_state.dart';
 
-// Written out here rather than imported, so a renamed channel in the app fails
-// this test instead of moving with it. Must match MainActivity.kt.
 const _navigationChannel = MethodChannel(
   'com.shafayatb.snapendance/navigation',
 );
@@ -93,7 +91,6 @@ void main() {
 
       expect(find.text(_launchFailedMessage), findsOneWidget);
 
-      // Let the first message time out, so the next check sees a new one.
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
       expect(find.text(_launchFailedMessage), findsNothing);
@@ -109,8 +106,6 @@ void main() {
   testWidgets('shows feedback when Android has no navigation handler', (
     tester,
   ) async {
-    // Android answers a channel with no handler with an empty reply, which
-    // Flutter turns into a MissingPluginException.
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMessageHandler(
           _navigationChannel.name,
@@ -127,7 +122,6 @@ void main() {
   testWidgets(
     'tapping Camera & Uploads opens the camera, which starts by checking permission',
     (tester) async {
-      // The camera stays in its starting state for the whole test.
       when(
         () => cameraService.permission(),
       ).thenAnswer((_) => Completer<CameraPermission>().future);
@@ -140,7 +134,6 @@ void main() {
       );
 
       await tester.tap(cameraCard);
-      // Past the route transition; the camera's progress spinner never settles.
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
