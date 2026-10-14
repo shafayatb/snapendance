@@ -20,7 +20,6 @@ class DataStoreAttendanceStoreTest {
 
     private val file: File by lazy { File(folder.root, "attendance_record.preferences_pb") }
 
-    /** Runs [block] with a store whose DataStore is closed afterwards, as after a process restart. */
     private fun <T> withStore(block: suspend (AttendanceStore) -> T): T = runBlocking {
         val job = Job()
         val dataStore = PreferenceDataStoreFactory.create(

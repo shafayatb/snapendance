@@ -15,22 +15,17 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
-/** [LocationSource] backed by the Play services Fused Location Provider. */
 class FusedLocationSource(context: Context) : LocationSource {
-    // The application context, so a source held by a ViewModel never keeps an Activity alive.
     private val appContext = context.applicationContext
     private val client = LocationServices.getFusedLocationProviderClient(appContext)
     private val locationManager = appContext.getSystemService(LocationManager::class.java)
 
-    // Callers check precise permission before collecting (see LocationSource.fixes); if it is
-    // revoked meanwhile, the request throws SecurityException, which fails the flow.
     @SuppressLint("MissingPermission")
     override fun fixes(): Flow<LocationFix> = callbackFlow {
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MILLIS)
             .build()
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                // A result can batch several fixes; the policy judges each one.
                 result.locations.forEach { trySend(it.toLocationFix()) }
             }
         }

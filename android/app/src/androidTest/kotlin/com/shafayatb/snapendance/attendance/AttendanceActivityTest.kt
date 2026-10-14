@@ -16,7 +16,6 @@ class AttendanceActivityTest {
 
     @Test
     fun tappingNavigateBackFinishesActivity() {
-        // Held before the tap: the rule cannot look up an Activity once it is destroyed.
         val activity = composeRule.activity
 
         composeRule.onNodeWithContentDescription("Navigate back").performClick()

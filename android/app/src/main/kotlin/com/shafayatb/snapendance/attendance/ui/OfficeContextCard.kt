@@ -58,11 +58,6 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/**
- * "Step 1: Office Context" (design A1, A2, P2): the saved office or why there is none, and Set
- * Office Location. Until [isOfficeLoaded], a null [office] is not known yet, and [isBlocked] means
- * a location blocker is shown below the card (A6-A8); either disables the button.
- */
 @Composable
 fun OfficeContextCard(
     office: SavedOffice?,
@@ -402,16 +397,13 @@ private fun SetOfficeButton(style: ButtonStyle, onClick: () -> Unit) {
 
 private fun formatCoordinate(value: Double): String = String.format(Locale.ROOT, "%.4f", value)
 
-/** "08:41 AM" or "08:41", in the device's 12/24-hour setting. */
 @Composable
 internal fun formatClockTime(epochMillis: Long): String {
     val timePattern = if (DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "hh:mm a"
-    // From the configuration, so a locale change recomposes with the new one.
     val locale = LocalConfiguration.current.locales[0]
     return SimpleDateFormat(timePattern, locale).format(Date(epochMillis))
 }
 
-/** "Today, 08:41 AM", "Yesterday, 08:41 AM", or "12 Oct, 08:41 AM", in the device's 12/24-hour setting. */
 @Composable
 internal fun formatSavedTime(epochMillis: Long): String {
     val locale = LocalConfiguration.current.locales[0]

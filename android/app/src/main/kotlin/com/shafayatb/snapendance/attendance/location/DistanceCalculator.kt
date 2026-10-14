@@ -2,7 +2,6 @@ package com.shafayatb.snapendance.attendance.location
 
 import android.location.Location
 
-/** Distance between two positions. An interface because JVM tests cannot run the framework's. */
 fun interface DistanceCalculator {
     fun distanceMeters(
         fromLatitude: Double,
@@ -12,7 +11,6 @@ fun interface DistanceCalculator {
     ): Double
 }
 
-/** The framework's ellipsoid (WGS84) distance, [Location.distanceBetween]. */
 object AndroidDistanceCalculator : DistanceCalculator {
     override fun distanceMeters(
         fromLatitude: Double,

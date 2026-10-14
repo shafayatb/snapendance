@@ -7,11 +7,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.shafayatb.snapendance.R
 
-// Light design tokens from docs/design/Design System.dc.html (script renderVals()).
-// lib/app/theme/app_tokens.dart holds the same names and values for Flutter; change both
-// together. The window background (attendance_background in res/values/colors.xml) repeats
-// `background`.
-
 object AttendanceColors {
     val background = Color(0xFFEEF2F7)
     val surface = Color(0xFFFFFFFF)
@@ -27,7 +22,6 @@ object AttendanceColors {
     val onDisabled = Color(0xFF5F6B80)
 }
 
-/** Foreground and container color for each status in the light scheme. */
 object AttendanceStatusColors {
     val inRange = Color(0xFF17804A)
     val inRangeContainer = Color(0xFFDDF3E6)
@@ -63,7 +57,6 @@ object AttendanceRadius {
     val xl = 28.dp
 }
 
-// IBM Plex TTFs in res/font, copies of assets/fonts (SIL Open Font License, assets/fonts/OFL.txt).
 object AttendanceFonts {
     val sans = FontFamily(
         Font(R.font.ibm_plex_sans_regular, FontWeight.Normal),

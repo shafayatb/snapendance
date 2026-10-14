@@ -49,10 +49,6 @@ import com.shafayatb.snapendance.attendance.ui.theme.AttendanceStatusColors
 import com.shafayatb.snapendance.attendance.ui.theme.AttendanceTheme
 import kotlin.math.ceil
 
-/**
- * The live distance (design A1-A5, A9): a 176 dp ring whose arc is 50 m ÷ distance, a status chip,
- * and a helper line. [markedAtEpochMillis] is today's attendance time, if marked (A5 chip).
- */
 @Composable
 fun DistanceRing(
     status: DistanceStatus,
@@ -89,7 +85,6 @@ fun DistanceRing(
     }
 }
 
-/** Colors and copy for one status. */
 private data class RingLook(
     val color: Color,
     val container: Color,
@@ -127,14 +122,12 @@ private fun DistanceStatus.look(): RingLook = when (this) {
 
 @Composable
 private fun Ring(status: DistanceStatus, look: RingLook) {
-    // Arc length = 50 m ÷ distance, from the unrounded distance (A3).
     val targetSweep = when (status) {
         is DistanceStatus.OutOfRange ->
             (AttendanceEligibility.MAX_DISTANCE_METERS / status.distanceMeters).toFloat().coerceIn(0f, 1f)
         is DistanceStatus.InRange, is DistanceStatus.Weak -> 1f
         else -> 0f
     }
-    // Numbers and arcs 300 ms ease-out; colors cross-fade 250 ms (flow notes).
     val sweep by animateFloatAsState(targetSweep, tween(300, easing = FastOutSlowInEasing), label = "sweep")
     val arcColor by animateColorAsState(look.color, tween(250), label = "arcColor")
     val spin = rememberInfiniteTransition(label = "locating")
@@ -161,12 +154,10 @@ private fun Ring(status: DistanceStatus, look: RingLook) {
             val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
             drawArc(track, 0f, 360f, false, topLeft, arcSize, style = Stroke(stroke))
             when (status) {
-                // Indeterminate: a 22% arc spinning in a 1.2 s loop (A2).
                 DistanceStatus.Locating -> drawArc(
                     arcColor, rotation - 90f, 0.22f * 360f, false, topLeft, arcSize,
                     style = Stroke(stroke, cap = StrokeCap.Round),
                 )
-                // Dotted: the distance is approximate (A9).
                 is DistanceStatus.Weak -> drawArc(
                     arcColor, -90f, 360f, false, topLeft, arcSize,
                     style = Stroke(
@@ -217,7 +208,6 @@ private fun DistanceStatus.unit(): String = when (this) {
     DistanceStatus.NoOffice -> stringResource(R.string.ring_unit_no_office)
     DistanceStatus.Locating -> stringResource(R.string.ring_unit_locating)
     DistanceStatus.Unavailable -> stringResource(R.string.ring_unit_unavailable)
-    // Rounded up, like the rejection messages: ±25.3 m must not read as ±25 m.
     is DistanceStatus.Weak -> accuracyMeters?.let {
         stringResource(R.string.ring_unit_accuracy, ceil(it).toInt())
     } ?: stringResource(R.string.ring_unit_accuracy_unknown)
@@ -226,7 +216,6 @@ private fun DistanceStatus.unit(): String = when (this) {
 
 @Composable
 private fun StatusChip(label: String, color: Color, container: Color) {
-    // Grows in height at large font scales instead of truncating (flow notes).
     Row(
         modifier = Modifier
             .heightIn(min = 32.dp)

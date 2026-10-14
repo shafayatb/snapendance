@@ -14,7 +14,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
-/** The light theme for the native attendance screen. There is no dark variant. */
 @Composable
 fun AttendanceTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalStatusColors provides StatusColors.Light) {
@@ -27,7 +26,6 @@ fun AttendanceTheme(content: @Composable () -> Unit) {
 }
 
 object AttendanceTheme {
-    /** Status colors for attendance range and upload states. */
     val statusColors: StatusColors
         @Composable
         @ReadOnlyComposable
@@ -39,7 +37,6 @@ private val colorScheme = lightColorScheme(
     onPrimary = AttendanceColors.onPrimary,
     primaryContainer = AttendanceColors.primaryContainer,
     onPrimaryContainer = AttendanceColors.primary,
-    // The design has one accent; map the other roles to it, not to M3's default palette.
     secondary = AttendanceColors.primary,
     onSecondary = AttendanceColors.onPrimary,
     secondaryContainer = AttendanceColors.primaryContainer,
@@ -54,8 +51,6 @@ private val colorScheme = lightColorScheme(
     onSurface = AttendanceColors.onSurface,
     onSurfaceVariant = AttendanceColors.onSurfaceVariant,
     surfaceContainer = AttendanceColors.surfaceContainer,
-    // Flutter's ColorScheme falls back to these for roles the design does not set; M3 Compose
-    // would use its purple-tinted defaults instead.
     surfaceVariant = AttendanceColors.surface,
     surfaceDim = AttendanceColors.surface,
     surfaceBright = AttendanceColors.surface,
@@ -75,7 +70,6 @@ private val colorScheme = lightColorScheme(
 
 private val defaults = Typography()
 
-// Type scale from the design system. Styles outside the scale keep M3 sizes in IBM Plex Sans.
 private val typography = Typography(
     displayLarge = defaults.displayLarge.copy(fontFamily = AttendanceFonts.sans),
     displayMedium = defaults.displayMedium.copy(fontFamily = AttendanceFonts.sans),
@@ -103,14 +97,9 @@ private fun plexSans(size: Int, lineHeight: Int, weight: FontWeight, letterSpaci
         letterSpacing = letterSpacingEm.em,
     )
 
-/** A foreground color and its container (chip or badge background). */
 @Immutable
 data class StatusColorPair(val color: Color, val container: Color)
 
-/**
- * Status colors for attendance range and upload states. Read with
- * [AttendanceTheme.statusColors].
- */
 @Immutable
 data class StatusColors(
     val inRange: StatusColorPair,

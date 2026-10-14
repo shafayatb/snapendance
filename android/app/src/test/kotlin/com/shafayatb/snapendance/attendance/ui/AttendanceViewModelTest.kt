@@ -31,7 +31,6 @@ class AttendanceViewModelTest {
     private val source = FakeLocationSource()
     private var store = FakeOfficeStore()
 
-    // Fix ages are measured against this; fixes are built relative to it.
     private val nowElapsedRealtime = 1_000_000L
     private val nowEpochMillis = 1_791_870_060_000L
 
@@ -52,7 +51,6 @@ class AttendanceViewModelTest {
         Dispatchers.resetMain()
     }
 
-    /** A ViewModel whose screen has resumed holding [permission]. */
     private fun viewModel(permission: LocationPermission = LocationPermission.Precise) =
         AttendanceViewModel(
             locationSource = source,
@@ -72,7 +70,6 @@ class AttendanceViewModelTest {
             elapsedRealtimeMillis = nowElapsedRealtime - ageMillis,
         )
 
-    /** Collects the ViewModel's events for the rest of the test. */
     private fun TestScope.eventsOf(viewModel: AttendanceViewModel): List<AttendanceEvent> {
         val events = mutableListOf<AttendanceEvent>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -125,8 +122,6 @@ class AttendanceViewModelTest {
         store.readGate = read
         val viewModel = viewModel()
 
-        // Before the first read, no office is not the same as none saved: a tap must not replace
-        // the saved office without the confirmation.
         viewModel.onAction(AttendanceAction.SetOfficeClick)
         assertNull(viewModel.uiState.value.fixAttempt)
         assertEquals(0, source.activeRequests)
@@ -142,7 +137,6 @@ class AttendanceViewModelTest {
         store.readFailure = IOException("corrupt file")
         val viewModel = viewModel()
 
-        // The failed read must not leave the button disabled or the screen showing no office.
         viewModel.onAction(AttendanceAction.SetOfficeClick)
         source.send(fix(accuracyMeters = 6f))
 
@@ -161,7 +155,6 @@ class AttendanceViewModelTest {
         assertEquals(expected, store.savedOffice)
         assertEquals(expected, viewModel.uiState.value.office)
         assertNull(viewModel.uiState.value.fixAttempt)
-        // The attempt's request ended; live distance tracking (task 03) holds the only one.
         assertEquals(1, source.activeRequests)
         assertEquals(DistanceStatus.Locating, viewModel.uiState.value.distance)
     }
@@ -272,7 +265,6 @@ class AttendanceViewModelTest {
 
         viewModel.onAction(AttendanceAction.SetOfficeClick)
         assertTrue(viewModel.uiState.value.isReplaceConfirmationVisible)
-        // Only live tracking's request; no attempt until the user confirms.
         assertNull(viewModel.uiState.value.fixAttempt)
         assertEquals(1, source.activeRequests)
 
@@ -343,7 +335,6 @@ class AttendanceViewModelTest {
         val viewModel = viewModel(LocationPermission.None)
         val events = eventsOf(viewModel)
 
-        // A second request while one is open gets an empty answer and loses the real one.
         viewModel.onAction(AttendanceAction.SetOfficeClick)
         viewModel.onAction(AttendanceAction.SetOfficeClick)
         assertEquals(listOf(AttendanceEvent.RequestLocationPermission), events)
@@ -370,7 +361,6 @@ class AttendanceViewModelTest {
 
     @Test
     fun firstRunWithoutPermissionShowsNoBlocker() = runTest {
-        // A1: the button stays enabled until the user has been asked.
         assertNull(viewModel(LocationPermission.None).uiState.value.blocker)
     }
 
@@ -397,8 +387,6 @@ class AttendanceViewModelTest {
         val viewModel = viewModel(LocationPermission.None)
         viewModel.onAction(AttendanceAction.SetOfficeClick)
 
-        // Precise was refused and the system will not show the upgrade dialog again, so asking
-        // from A7 would return at once with nothing changed.
         viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.Approximate, false))
         viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.Approximate))
 
@@ -414,7 +402,6 @@ class AttendanceViewModelTest {
         viewModel.onAction(AttendanceAction.SetOfficeClick)
         viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.None, false))
 
-        // Approximate granted in app settings: the old "won't ask again" no longer applies.
         viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.Approximate))
 
         assertEquals(
@@ -429,7 +416,6 @@ class AttendanceViewModelTest {
         viewModel.onAction(AttendanceAction.SetOfficeClick)
 
         viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.None, true))
-        // The dialog closing resumes the screen; that must not hide the blocker.
         viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.None))
 
         assertEquals(
@@ -463,7 +449,6 @@ class AttendanceViewModelTest {
         viewModel.onAction(AttendanceAction.ScreenResumed(LocationPermission.Precise))
 
         assertNull(viewModel.uiState.value.blocker)
-        // Returning from settings is not a tap; the user starts the fetch.
         assertEquals(0, source.activeRequests)
     }
 
@@ -472,7 +457,6 @@ class AttendanceViewModelTest {
         val viewModel = viewModel(LocationPermission.Approximate)
         assertEquals(LocationBlocker.ApproximateOnly(canAskAgain = true), viewModel.uiState.value.blocker)
 
-        // A7's "Use precise location" asks without Set Office Location being tapped.
         viewModel.onAction(AttendanceAction.PermissionResult(LocationPermission.Precise, false))
 
         assertNull(viewModel.uiState.value.blocker)

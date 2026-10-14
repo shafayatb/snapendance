@@ -44,7 +44,6 @@ class LocationFixPolicyTest {
 
     @Test
     fun staleFixIsReportedAsStaleEvenWhenAlsoInaccurate() {
-        // An old fix says nothing about the current position, so its accuracy is irrelevant.
         assertEquals(
             FixVerdict.Stale(60_000L),
             LocationFixPolicy.evaluate(fix(80f, 60_000L), now),

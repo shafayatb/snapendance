@@ -48,11 +48,6 @@ import kotlin.math.ceil
 
 private enum class CardKind { Locked, Ready, Marked }
 
-/**
- * Mark Attendance (design A3-A5): dashed and locked until [AttendanceUiState.canMarkAttendance],
- * green-bordered and enabled when it is, and the "Attendance marked" confirmation once marked
- * today. The bottom line shows the last attendance instead of the reference's time window.
- */
 @Composable
 fun AttendanceCard(
     state: AttendanceUiState,
@@ -64,7 +59,6 @@ fun AttendanceCard(
         state.canMarkAttendance || state.isCheckingAttendance -> CardKind.Ready
         else -> CardKind.Locked
     }
-    // The card cross-fades between kinds (A4 → A5: 250 ms).
     AnimatedContent(
         targetState = kind,
         transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(250)) },
@@ -98,7 +92,6 @@ private fun LockedCard(lastAttendance: AttendanceRecord?) {
         },
     ) {
         CardIcon(R.drawable.ic_lock, MaterialTheme.colorScheme.onSurfaceVariant)
-        // Disabled, not hidden: tapping the locked button does nothing (A3).
         MarkButton(enabled = false, isChecking = false, onClick = {})
         LastMarkedLine(lastAttendance)
     }
@@ -188,7 +181,6 @@ private fun CardIcon(icon: Int, tint: Color) {
 @Composable
 private fun MarkButton(enabled: Boolean, isChecking: Boolean, onClick: () -> Unit) {
     Button(
-        // While checking, the button keeps its look but ignores taps (the ViewModel does too).
         onClick = { if (!isChecking) onClick() },
         enabled = enabled,
         modifier = Modifier

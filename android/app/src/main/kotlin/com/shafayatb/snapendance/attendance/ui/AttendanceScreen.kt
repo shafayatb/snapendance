@@ -66,11 +66,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Connects [AttendanceScreen] to [viewModel]: collects its state, carries out its events
- * (permission request, snackbars) and the blockers' recoveries, and reports the permission and
- * lifecycle back.
- */
 @Composable
 fun AttendanceRoot(
     viewModel: AttendanceViewModel,
@@ -86,7 +81,6 @@ fun AttendanceRoot(
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) {
-        // Read the permission again rather than the result map: it holds only what was asked.
         viewModel.onAction(
             AttendanceAction.PermissionResult(
                 permission = context.locationPermission(),
@@ -97,7 +91,6 @@ fun AttendanceRoot(
         )
     }
 
-    // Fine and coarse together: Android 12+ ignores a request for fine alone.
     val requestPermission = {
         permissionLauncher.launch(
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
@@ -107,12 +100,10 @@ fun AttendanceRoot(
         viewModel.onAction(AttendanceAction.ScreenResumed(context.locationPermission()))
     }
 
-    // Nothing to read from the result: closing the dialog resumes the screen, which re-checks.
     val turnOnLocationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
     ) {}
 
-    // Permission and services can change in system settings while the screen is away (plan D6).
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { recheckLocation() }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         viewModel.onAction(AttendanceAction.ScreenStopped)
@@ -125,14 +116,12 @@ fun AttendanceRoot(
                 return@ObserveAsEvents
             }
             AttendanceEvent.NoFix -> resources.getString(R.string.office_error_no_fix)
-            // Rounded up: a rejected 25.3 m must not read as "±25 m; ±25 m or better is needed".
             is AttendanceEvent.FixTooInaccurate -> event.bestAccuracyMeters?.let {
                 resources.getString(R.string.office_error_inaccurate, ceil(it).toInt())
             } ?: resources.getString(R.string.office_error_inaccurate_unknown)
             AttendanceEvent.FixStale -> resources.getString(R.string.office_error_stale)
             AttendanceEvent.OfficeSaveFailed -> resources.getString(R.string.office_error_save)
             AttendanceEvent.OfficeLoadFailed -> resources.getString(R.string.office_error_load)
-            // Rounded up like the ring, so 50.2 m never reads as "50 m" here.
             is AttendanceEvent.MarkOutOfRange -> resources.getString(
                 R.string.mark_error_out_of_range,
                 ceil(event.distanceMeters).toInt(),
@@ -141,7 +130,6 @@ fun AttendanceRoot(
             AttendanceEvent.MarkSaveFailed -> resources.getString(R.string.mark_error_save)
             AttendanceEvent.AttendanceLoadFailed -> resources.getString(R.string.mark_error_load)
         }
-        // What Retry repeats: a failed load or an out-of-range check has nothing to retry.
         val retryAction = when (event) {
             AttendanceEvent.MarkNoFix, AttendanceEvent.MarkSaveFailed ->
                 AttendanceAction.MarkAttendanceClick
@@ -150,7 +138,6 @@ fun AttendanceRoot(
             else -> AttendanceAction.SetOfficeClick
         }
         scope.launch {
-            // The newest message replaces one still on screen instead of queueing behind it.
             snackbarHostState.currentSnackbarData?.dismiss()
             val result = snackbarHostState.showSnackbar(
                 message = message,
@@ -187,10 +174,6 @@ fun AttendanceRoot(
     )
 }
 
-/**
- * Attendance screen (design A1-A9, P2): office card, distance ring or location blocker, and
- * the Mark Attendance card. [onRecoveryClick] carries out the recovery of the blocker shown.
- */
 @Composable
 fun AttendanceScreen(
     state: AttendanceUiState,
@@ -226,7 +209,6 @@ fun AttendanceScreen(
                 isBlocked = state.blocker != null,
                 onSetOfficeClick = { onAction(AttendanceAction.SetOfficeClick) },
             )
-            // A blocker replaces the ring (task 02 plan D7); the card stays, locked.
             val blocker = state.blocker
             if (blocker != null) {
                 LocationIssuePanel(blocker = blocker, onRecoveryClick = { onRecoveryClick(blocker) })
@@ -255,7 +237,6 @@ fun AttendanceScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AttendanceTopBar(onNavigateBack: () -> Unit) {
-    // Small top app bar: 64 dp, 48 dp back button, titleLarge. It pads itself below the status bar.
     TopAppBar(
         title = { Text(stringResource(R.string.attendance_title)) },
         navigationIcon = {
@@ -272,7 +253,6 @@ private fun AttendanceTopBar(onNavigateBack: () -> Unit) {
     )
 }
 
-/** Plan D8: replacing the saved office cannot be undone, so it is confirmed first. */
 @Composable
 private fun ReplaceOfficeDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
@@ -290,10 +270,6 @@ private fun ReplaceOfficeDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     )
 }
 
-/**
- * Collects one-off [events] while the screen is at least started, on the main thread without
- * a dispatch, so an event sent just before a configuration change is not lost.
- */
 @Composable
 private fun <T> ObserveAsEvents(events: Flow<T>, onEvent: (T) -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -307,7 +283,6 @@ private fun <T> ObserveAsEvents(events: Flow<T>, onEvent: (T) -> Unit) {
     }
 }
 
-/** The location permission this app holds now. */
 private fun Context.locationPermission(): LocationPermission = when {
     isGranted(Manifest.permission.ACCESS_FINE_LOCATION) -> LocationPermission.Precise
     isGranted(Manifest.permission.ACCESS_COARSE_LOCATION) -> LocationPermission.Approximate
@@ -317,17 +292,10 @@ private fun Context.locationPermission(): LocationPermission = when {
 private fun Context.isGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
-/** This app's page in system settings, where a permission the system no longer asks for is changed. */
 private fun Context.openAppSettings() {
     startSettings(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
 }
 
-/**
- * Shows the Play services "turn on location" dialog (A8), or the system location settings when
- * it cannot be shown (no Play services, or the device does not allow the change). [onAlreadyOn]
- * runs when location is on already: turned on from the notification shade, which does not
- * resume the screen. Callbacks are tied to this Activity, so none runs after it stops.
- */
 private fun Activity.turnOnLocation(
     dialogLauncher: ActivityResultLauncher<IntentSenderRequest>,
     onAlreadyOn: () -> Unit,
@@ -346,7 +314,6 @@ private fun Activity.turnOnLocation(
         }
 }
 
-/** Opens a settings screen, or the main settings page on a device without that screen. */
 private fun Context.startSettings(intent: Intent) {
     try {
         startActivity(intent)

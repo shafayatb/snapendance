@@ -13,25 +13,14 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/**
- * The saved office location. An interface so ViewModel tests can use a fake that fails.
- *
- * [office] emits null while nothing is saved. Reading or saving throws `IOException` when the file
- * cannot be accessed; the caller decides what the user sees.
- */
 interface OfficeStore {
     val office: Flow<SavedOffice?>
 
     suspend fun save(office: SavedOffice)
 }
 
-/**
- * A corrupt file is replaced by an empty one (no office saved). Without it, every read and save
- * fails until the user clears the app's data.
- */
 internal val officeCorruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() }
 
-/** The app's one office-location DataStore (the delegate keeps it to one instance per process). */
 val Context.officeDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "office_location",
     corruptionHandler = officeCorruptionHandler,
@@ -39,7 +28,6 @@ val Context.officeDataStore: DataStore<Preferences> by preferencesDataStore(
 
 class DataStoreOfficeStore(private val dataStore: DataStore<Preferences>) : OfficeStore {
     override val office: Flow<SavedOffice?> = dataStore.data.map { prefs ->
-        // A record missing any field is treated as not saved rather than shown with a made-up value.
         SavedOffice(
             latitude = prefs[LATITUDE] ?: return@map null,
             longitude = prefs[LONGITUDE] ?: return@map null,
@@ -49,7 +37,6 @@ class DataStoreOfficeStore(private val dataStore: DataStore<Preferences>) : Offi
     }
 
     override suspend fun save(office: SavedOffice) {
-        // One edit, so all four fields are written together or not at all.
         dataStore.edit { prefs ->
             prefs[LATITUDE] = office.latitude
             prefs[LONGITUDE] = office.longitude

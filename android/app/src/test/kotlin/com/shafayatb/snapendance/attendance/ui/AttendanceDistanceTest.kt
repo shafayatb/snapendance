@@ -25,7 +25,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/** Live distance (task 03): tracking, eligibility on screen, and Mark Attendance. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AttendanceDistanceTest {
     private val source = FakeLocationSource()
@@ -34,7 +33,6 @@ class AttendanceDistanceTest {
     )
     private var attendanceStore = FakeAttendanceStore()
 
-    // 2026-10-14 03:00 UTC; the tests' time zone is UTC.
     private val todayEpochMillis = 1_791_946_800_000L
     private val dayMillis = 86_400_000L
     private val startElapsedRealtime = 1_000_000L
@@ -49,7 +47,6 @@ class AttendanceDistanceTest {
         Dispatchers.resetMain()
     }
 
-    /** Both clocks follow the test scheduler, so `advanceTimeBy` moves them. */
     private fun TestScope.viewModel(permission: LocationPermission = LocationPermission.Precise) =
         AttendanceViewModel(
             locationSource = source,
@@ -63,7 +60,6 @@ class AttendanceDistanceTest {
 
     private fun TestScope.elapsedNow() = startElapsedRealtime + testScheduler.currentTime
 
-    /** A fix taken now, [distanceMeters] from the office (see FlatDistanceCalculator). */
     private fun TestScope.fix(distanceMeters: Double, accuracyMeters: Float = 8f) = LocationFix(
         latitude = distanceMeters,
         longitude = 90.4066,
@@ -78,8 +74,6 @@ class AttendanceDistanceTest {
         }
         return events
     }
-
-    // Tracking
 
     @Test
     fun trackingStartsOnResumeAndWaitsForTheFirstFix() = runTest {
@@ -191,7 +185,6 @@ class AttendanceDistanceTest {
         val viewModel = viewModel()
         source.send(fix(20.0))
 
-        // Turned off from the quick-settings shade: no resume, no more fixes.
         source.locationEnabled = false
         advanceTimeBy(30_002L)
 
@@ -210,7 +203,6 @@ class AttendanceDistanceTest {
         assertEquals(1, source.activeRequests)
         assertEquals(DistanceStatus.Locating, viewModel.uiState.value.distance)
 
-        // Saved as the new office at 200 m from the old one; tracking restarts from Locating.
         source.send(fix(200.0))
         assertEquals(1, source.activeRequests)
         assertEquals(DistanceStatus.Locating, viewModel.uiState.value.distance)
@@ -232,8 +224,6 @@ class AttendanceDistanceTest {
         assertEquals(1, source.activeRequests)
         assertEquals(DistanceStatus.Locating, viewModel.uiState.value.distance)
     }
-
-    // Marking
 
     @Test
     fun markingWaitsForAFreshFixAndRecordsTimeAndDistance() = runTest {
@@ -279,7 +269,6 @@ class AttendanceDistanceTest {
 
         advanceTimeBy(500L)
         viewModel.onAction(AttendanceAction.MarkAttendanceClick)
-        // Delivered late (batched), but taken before the tap.
         source.send(beforeTap)
 
         assertNull(attendanceStore.savedRecord)

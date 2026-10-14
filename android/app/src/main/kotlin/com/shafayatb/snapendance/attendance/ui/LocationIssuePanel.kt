@@ -32,11 +32,6 @@ import com.shafayatb.snapendance.attendance.ui.theme.AttendanceSpacing
 import com.shafayatb.snapendance.attendance.ui.theme.AttendanceTheme
 import com.shafayatb.snapendance.attendance.ui.theme.StatusColorPair
 
-/**
- * Why location cannot be used and how to fix it (design A6-A8), shown below the Step 1 card.
- * [onRecoveryClick] carries out the recovery that [blocker] names: ask again, open app settings,
- * or turn on location.
- */
 @Composable
 fun LocationIssuePanel(
     blocker: LocationBlocker,
@@ -111,7 +106,6 @@ private data class Issue(
     val actionIcon: Int,
 )
 
-/** The copy and recovery for each blocker; the "ask again" variants are plan D5 deviations. */
 private fun LocationBlocker.issue(): Issue = when (this) {
     is LocationBlocker.PermissionDenied -> if (canAskAgain) {
         Issue(

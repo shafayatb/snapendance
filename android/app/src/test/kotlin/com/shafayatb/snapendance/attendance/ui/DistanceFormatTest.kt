@@ -11,7 +11,6 @@ class DistanceFormatTest {
 
     @Test
     fun justOver50MetersRoundsUpSoItNeverReadsInRange() {
-        // The button is locked above 50.0 m, so the ring must not show "50m".
         assertEquals("51m", formatDistance(50.01))
     }
 

@@ -9,17 +9,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 
-/** An in-memory [OfficeStore] that can fail on read or save like the DataStore file. */
 class FakeOfficeStore(initial: SavedOffice? = null) : OfficeStore {
     private val stored = MutableStateFlow(initial)
 
-    /** What is currently saved. */
     val savedOffice: SavedOffice? get() = stored.value
 
     var readFailure: IOException? = null
     var saveFailure: IOException? = null
 
-    /** When set, the first read waits for it, like a cold DataStore file read. */
     var readGate: CompletableDeferred<Unit>? = null
 
     override val office: Flow<SavedOffice?> = flow {

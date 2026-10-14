@@ -17,7 +17,6 @@ class AttendanceEligibilityTest {
         savedAtEpochMillis = 1_791_800_000_000L,
     )
 
-    /** A fix [distanceMeters] from [office] (see [FlatDistanceCalculator]). */
     private fun fix(distanceMeters: Double, accuracyMeters: Float? = 10f, ageMillis: Long = 0L) =
         LocationFix(
             latitude = office.latitude + distanceMeters,
@@ -51,7 +50,6 @@ class AttendanceEligibilityTest {
 
     @Test
     fun justOver50MetersIsOutOfRange() {
-        // Unrounded: 50.01 m must not round down into range.
         assertEquals(Eligibility.OutOfRange(50.01), evaluate(fix(50.01)))
     }
 

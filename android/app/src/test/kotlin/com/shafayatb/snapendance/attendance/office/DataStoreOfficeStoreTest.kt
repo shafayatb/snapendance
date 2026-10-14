@@ -20,10 +20,6 @@ class DataStoreOfficeStoreTest {
 
     private val file: File by lazy { File(folder.root, "office_location.preferences_pb") }
 
-    /**
-     * Runs [block] with a store on [file] whose DataStore is closed afterwards, so the next call
-     * opens a fresh instance on the same file, as after a process restart.
-     */
     private fun <T> withStore(block: suspend (OfficeStore) -> T): T = runBlocking {
         val job = Job()
         val dataStore = PreferenceDataStoreFactory.create(
@@ -59,7 +55,6 @@ class DataStoreOfficeStoreTest {
 
     @Test
     fun corruptFileReadsAsNoOfficeAndCanBeSavedOver() {
-        // Without recovery every read and save would fail until the user cleared app data.
         file.writeText("not a preferences file")
 
         assertNull(withStore { it.office.first() })
