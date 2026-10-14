@@ -132,8 +132,11 @@ class AttendanceViewModel(
                 isScreenStarted = true
                 // Each return tries location updates again.
                 trackingFailed = false
-                // The day may have changed while the screen was away.
-                showAttendance(_uiState.value.lastAttendance)
+                // The day may have changed while the screen was away. Before the first read
+                // there is nothing to re-check, and marking must keep waiting for it.
+                if (_uiState.value.isAttendanceLoaded) {
+                    showAttendance(_uiState.value.lastAttendance)
+                }
                 refreshBlocker()
             }
             is AttendanceAction.PermissionResult -> onPermissionResult(action)
