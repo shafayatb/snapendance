@@ -26,12 +26,13 @@ task file in the same task so this folder stays the current scope record.
 | 09 | [Upload Manager screen](09-pending-uploads-screen.md) | 08 | Done |
 | 10 | [Background sync and connectivity](10-background-sync.md) | 08, 09 | Done |
 | 11 | [Submission](11-submission.md) | all | Not started |
+| 12 | Async failure handling ([plan](../plans/2026-10-14-12-async-failure-handling.md); fix task, no task file) | 04-10 | Done |
 
 Status values: `Not started`, `Planned` (plan approved), `In progress`, `In review`, `Done`.
 Update a task's status here as it moves; task files do not carry status.
 Tasks 02-03 (native) and 04-07 (Flutter camera) are independent tracks after task 01.
 
-Tasks 01-10 are done. Because of the 2026-10-14 20:00 deadline, the remaining work runs in a
+Tasks 01-10 and fix task 12 are done. Because of the 2026-10-14 20:00 deadline, the remaining work runs in a
 triaged mode (approved 2026-10-14): tasks 04-06 as one camera task and 07-10 as one uploads task,
 agent commits and merges, no per-step checkpoints, one review at the end.
 
@@ -74,4 +75,10 @@ Found during a task, deliberately left for later. Pick one up only when the user
 | 07 | Drop the camera plugin's merged `RECORD_AUDIO` and `WRITE_EXTERNAL_STORAGE` permissions with `tools:node="remove"`; still capture needs neither. | Found late; needs a camera retest. |
 | 07 | Device-check the Timeout and Permanent-failure scenarios, swiping the app away and process recreation during a run, and the flash firing on capture. | Tests only so far; the lens was covered during the device runs. |
 | 07 | C9 "Photos already in this batch are kept" line on the Camera unavailable state. | Cut for the deadline. |
+| 12 | Zoom, flash, and focus restore the UI when the hardware call fails (today the UI shows the new value and the failure is ignored). | Rare; needs hardware retesting. |
+| 12 | Refresh "marked today" at midnight while the attendance screen stays open (today it updates on the next resume). | Edge case; reopening fixes it. |
+| 12 | Immutable list snapshots in the upload models; read only unfinished batches on each Upload Manager poll; split `camera_page.dart` and `upload_manager_page.dart` into smaller files. | Quality only; cut for the deadline. |
+| 12 | Ignore pinch, focus, and flash while a capture is saving, like the other controls. | Low impact. |
+| 12 | Await the previous camera's release before opening the next one; a quick return now opens while the old session is still closing. | Review P3, unconfirmed; four quick returns on the A04s each ended with the camera open. |
+| 12 | A camera permission left `USER_FIXED` from an earlier session reads as "denied" (Allow camera access does nothing) instead of "permanently denied" with Open settings. Seen on the A04s after `pm revoke`; not changed by task 12. | Found late; needs a permission-flow retest. |
 | 02 | Keep a running GPS fetch across Activity recreation (send `ScreenStopped` only when not `isChangingConfigurations`), then remove the portrait lock. Until then, a dark-mode, font-size, locale, or split-screen change still cancels a fetch silently, and Android 16 ignores the lock on screens ≥ 600 dp wide. | User chose the portrait lock for the deadline. |
