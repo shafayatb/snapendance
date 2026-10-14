@@ -1,6 +1,6 @@
 # Task 04: Camera preview and lifecycle
 
-**Status:** Not started · **Depends on:** 01 · **Track:** Flutter camera
+**Depends on:** 01 · **Track:** Flutter camera
 
 ## Goal
 

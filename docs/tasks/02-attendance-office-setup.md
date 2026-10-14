@@ -1,6 +1,6 @@
 # Task 02: Attendance - set office location
 
-**Status:** Not started · **Depends on:** 01 · **Track:** native Android
+**Depends on:** 01 · **Track:** native Android
 
 ## Goal
 
@@ -11,8 +11,8 @@ accurate GPS fix and saves it locally, and the saved office survives app restart
 
 - Manifest location permissions (`ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`) and runtime
   requests from Compose. No background location permission.
-- A location source behind an interface (so the ViewModel is testable with a fake) that requests a
-  single high-accuracy current fix.
+- A location source behind an interface (so the ViewModel is testable with a fake) that streams
+  high-accuracy updates; an attempt saves the first fix the policy accepts within 15 s (plan D2).
 - An office-location store using DataStore (planned) holding latitude, longitude, accuracy, and the
   saved time.
 - `AttendanceViewModel` exposing immutable `StateFlow` UI state; the screen collects it with
@@ -47,7 +47,8 @@ Live distance, eligibility, Mark Attendance (task 03). Geofencing APIs, backgrou
   failure maps to its state; stale/inaccurate fixes are rejected; duplicate taps are ignored.
 - Store test: a saved office reads back after a new store instance.
 - Device: real phone for an actual GPS fix; emulator for permission denial, services off, and mock
-  locations. Verify rotation and process recreation.
+  locations. Verify rotation and process recreation. (The attendance screen is portrait-only for now;
+see the backlog's deferred improvements.)
 
 ## Decisions for the plan
 

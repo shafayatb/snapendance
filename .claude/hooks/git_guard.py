@@ -2,8 +2,12 @@
 """PreToolUse(Bash): deny Git/GitHub commands that change history, refs, or settings.
 
 AGENTS.md makes Git human-owned: agents may inspect (status, diff, log, show, ...)
-but must not init, stage, commit, push, tag, merge, switch branches, change
-remotes/config, or create PRs unless the user explicitly authorizes it.
+but must not init, stage, commit, push, tag, merge, switch to existing branches,
+change remotes/config, or create PRs unless the user explicitly authorizes it.
+
+Exception (user-authorized 2026-10-13): creating a new branch is allowed, in the plain
+forms `git switch -c <name> [<start>]`, `git checkout -b <name> [<start>]`, and
+`git branch <name> [<start>]`. Force/reset variants (-C, -B, -f) are still denied.
 """
 import json
 import re
@@ -48,6 +52,20 @@ def segments(command: str):
             yield words
 
 
+def is_branch_creation(sub, rest):
+    # Only `<flag> <name> [<start-point>]` with no further options.
+    flags = {"switch": {"-c", "--create"}, "checkout": {"-b"}}
+    if sub in flags:
+        if not rest or rest[0] not in flags[sub]:
+            return False
+        names = rest[1:]
+    elif sub == "branch":
+        names = rest
+    else:
+        return False
+    return 1 <= len(names) <= 2 and not any(n.startswith("-") for n in names)
+
+
 def git_violation(args):
     i = 0
     while i < len(args) and args[i].startswith("-"):
@@ -56,6 +74,8 @@ def git_violation(args):
     if i >= len(args):
         return None
     sub, rest = args[i], args[i + 1:]
+    if is_branch_creation(sub, rest):
+        return None
     if sub in DENY:
         return f"git {sub}"
     if sub in READ_ONLY_FORMS:

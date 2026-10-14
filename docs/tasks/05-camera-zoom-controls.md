@@ -1,6 +1,6 @@
 # Task 05: Camera zoom, lens, and flash controls
 
-**Status:** Not started · **Depends on:** 04 · **Track:** Flutter camera
+**Depends on:** 04 · **Track:** Flutter camera
 
 ## Goal
 

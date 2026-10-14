@@ -1,6 +1,6 @@
 # Task 07: Capture and durable batches
 
-**Status:** Not started · **Depends on:** 04 · **Track:** Flutter uploads
+**Depends on:** 04 · **Track:** Flutter uploads
 
 ## Goal
 
@@ -18,7 +18,8 @@ queue with the reference's **UPLOAD BATCH (n)** button.
   capture starts a new batch.
 - UI from design `C1`, `C6`, `C7`, `C10`: last-capture thumbnail with count badge (dashed
   placeholder when empty), capture-in-progress shutter state with controls disabled and the
-  "Saving photo n…" toast, **UPLOAD BATCH (n)** (disabled at 0), and the "Batch of n photos
+  "Saving photo n…" toast, **UPLOAD BATCH (n)** (at 0 it shows the empty-batch hint, design
+  `C7`), and the "Batch of n photos
   queued" snackbar (4 s). Its VIEW action and the cloud icon's pending badge are wired in task 09.
 - Home's Camera & Uploads card shows the pending count when the queue isn't empty (design `H2`).
 - Startup reconciliation: files without metadata and metadata without files are handled as defined

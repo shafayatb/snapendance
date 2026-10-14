@@ -1,7 +1,5 @@
 # Snapendance agent instructions
 
-@/Users/shafayatbinmamun/.codex/RTK.md
-
 This is the single agent-rules entry point. Tool-specific rule files (including the existing
 `CLAUDE.md`) must be symlinks to this file; keep that symlink intact and edit `AGENTS.md` directly.
 The linked guides are project reference documentation, not separate agent configurations.
@@ -16,7 +14,7 @@ source, not authorization to implement, publish, or upload anything.
 The submission is one combined Android APK (approved 2026-10-12): a Flutter app with a native
 Kotlin/Compose attendance screen in its Android host. Package/application ID:
 `com.shafayatb.snapendance`. `ios/` is starter scaffolding and out of scope unless requested. The
-brief estimates 48-72 hours; no deadline is confirmed, so do not invent one.
+brief estimates 48-72 hours; the user confirmed a submission deadline of 2026-10-14.
 
 Source-of-truth order and the design-conflict rule are in the
 [product reference](docs/agent-reference/product.md#source-of-truth-order). Current user
@@ -44,13 +42,10 @@ and report it.
 | [Product](docs/agent-reference/product.md) | attendance, camera, batches, upload states, or a reference screen |
 | [Implementation](docs/agent-reference/implementation.md) | architecture, platform integration, persistence, dependencies, hardware |
 | [Verification](docs/agent-reference/verification.md) | implementing or verifying app behavior |
-| [Delivery](docs/agent-reference/delivery.md) | task boundaries, `FRESH_PROMPT.md`, review/submission handoffs |
-| [Git](docs/agent-reference/git.md) | any Git inspection or suggestion, and task boundaries |
-| [UI design](docs/design/README.md) | building or changing any screen (frames and deviations table) |
+| [Delivery](docs/agent-reference/delivery.md) | task flow, step checkpoints, task review, agent log, `FRESH_PROMPT.md`, submission |
+| [Git](docs/agent-reference/git.md) | any Git inspection or suggestion |
+| UI design: `docs/design/README.md` (local only, not published) | building or changing any screen (frames and deviations table) |
 | [Task backlog](docs/tasks/README.md) | starting, scoping, or handing off any implementation task |
-
-Before production changes, read `README.md`, these instructions, the relevant guides, the assigned
-task file, and its plan, and inspect the existing repository.
 
 ## Always-on rules
 
@@ -62,14 +57,15 @@ task file, and its plan, and inspect the existing repository.
   UI never calls storage or uploads directly. See the implementation guide.
 - **Verify proportionally**, run the changed journey on Android, use a real phone for camera/GPS,
   and report unverified checks honestly.
-- **One assigned task at a time.** Finish, verify, record, update the handoff, and stop.
-- **Small steps, commit checkpoints.** Never one-shot a task; stop after each commit-sized step
-  for the user's diff review. See the Git reference.
+- **One task, small steps.** One assigned task at a time, implemented in commit-sized steps; stop
+  at each step checkpoint for the user's diff review. Never one-shot a task. See the delivery
+  reference.
 - **Human-owned Git.** Leave changes unstaged and uncommitted; no Git write actions, PRs, or
-  GitHub changes without explicit authorization. Suggest Conventional Commit messages only.
+  GitHub changes without explicit authorization, except creating a task's branch (see the Git
+  reference). Suggest Conventional Commit messages only.
 - **AI disclosure in docs only.** Record real prompts and evidence in `docs/agent-log.md` and the
   README; no agent author identities, co-author trailers, or generated-by comments.
-- **Separate review.** Follow the delivery guide's external review handoff; never approve your own
-  work or report a review that did not occur.
+- **Separate review.** One read-only review agent checks each finished task before its final
+  checkpoint; never approve your own work or report a review that did not occur.
 
-All shell commands must follow the referenced RTK instructions.
+Shell commands follow the RTK instructions from the user's global agent config.

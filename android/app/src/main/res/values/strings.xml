@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="attendance_title">Attendance</string>
+    <string name="attendance_navigate_back">Navigate back</string>
+
+    <!-- Step 1 card (design A1, A2, P2). -->
+    <string name="office_step_title">STEP 1: OFFICE CONTEXT</string>
+    <string name="office_not_saved">No office location saved</string>
+    <string name="office_loading">Loading saved office…</string>
+    <string name="office_fetching">Getting GPS fix…</string>
+    <string name="office_fetching_accuracy">accuracy ±%1$d m · improving</string>
+    <string name="office_fetching_waiting">waiting for the first fix</string>
+    <string name="office_location_unavailable">Location unavailable</string>
+    <string name="office_coordinates">Lat: %1$s, Lon: %2$s</string>
+    <string name="office_saved_label">SAVED</string>
+    <string name="office_accuracy_label">FIX ACCURACY</string>
+    <string name="office_accuracy_value">±%1$d m</string>
+    <string name="office_saved_today">Today, %1$s</string>
+    <string name="office_saved_yesterday">Yesterday, %1$s</string>
+    <string name="office_saved_date">%1$s, %2$s</string>
+    <string name="office_helper_not_saved">Stand inside the office, then save its GPS position. It is stored on this device only.</string>
+    <string name="office_helper_fetching">Hold the phone still. Indoors, a fix can take a few seconds.</string>
+    <string name="office_helper_saved">To mark your attendance, make sure the saved office location is correct.</string>
+    <string name="office_helper_blocked">Location access is needed to save the office position.</string>
+    <string name="office_set_button">Set Office Location</string>
+    <string name="office_fetching_button">Fetching GPS…</string>
+
+    <!-- Location blockers (design A6-A8); the "ask again" variants are plan D5 deviations. -->
+    <string name="issue_permission_title">Location permission is off</string>
+    <string name="issue_permission_body_ask">Snapendance uses your location only to measure the distance to the office. Allow it to continue.</string>
+    <string name="issue_permission_body_settings">Snapendance uses your location only to measure the distance to the office. Allow it in App settings to continue.</string>
+    <string name="issue_permission_action_ask">Allow location</string>
+    <string name="issue_precise_title">Precise location needed</string>
+    <string name="issue_precise_body_ask">Approximate location can be off by more than a kilometre, which is too coarse for a 50 m check.</string>
+    <string name="issue_precise_body_settings">Approximate location can be off by more than a kilometre, which is too coarse for a 50 m check. Turn on Precise location in App settings.</string>
+    <string name="issue_precise_action_ask">Use precise location</string>
+    <string name="issue_services_title">Device location is off</string>
+    <string name="issue_services_body">Turn on location services so Snapendance can measure your distance to the office.</string>
+    <string name="issue_services_action">Turn on location</string>
+    <string name="issue_open_app_settings">Open app settings</string>
+
+    <!-- Replacing a saved office (plan D8; not in the design). -->
+    <string name="office_replace_title">Replace saved office?</string>
+    <string name="office_replace_body">Your current GPS position will replace the saved office.</string>
+    <string name="office_replace_confirm">Replace</string>
+    <string name="office_replace_cancel">Cancel</string>
+
+    <!-- Snackbars (plan D4). -->
+    <string name="office_retry">Retry</string>
+    <string name="office_error_no_fix">Couldn\'t get a GPS fix. Move near a window and try again.</string>
+    <string name="office_error_inaccurate">GPS accuracy ±%1$d m; ±25 m or better is needed.</string>
+    <string name="office_error_inaccurate_unknown">The GPS fix did not report its accuracy. Try again.</string>
+    <string name="office_error_stale">Only an old GPS fix was available. Try again.</string>
+    <string name="office_error_save">Couldn\'t save the office location.</string>
+    <string name="office_error_load">Couldn\'t load the saved office location.</string>
+
+    <!-- Mark Attendance (task 03) -->
+    <string name="mark_error_out_of_range">You\'re %1$d m from the office. Move within 50 m to mark attendance. Nothing was recorded.</string>
+    <string name="mark_error_no_fix">Couldn\'t confirm your location with an accurate GPS fix. Nothing was recorded.</string>
+    <string name="mark_error_save">Couldn\'t save your attendance on this device.</string>
+    <string name="ring_unit_no_office">NO OFFICE SAVED</string>
+    <string name="ring_unit_locating">LOCATING</string>
+    <string name="ring_unit_unavailable">NO GPS</string>
+    <string name="ring_unit_away">AWAY</string>
+    <string name="ring_unit_accuracy">±%1$d m ACCURACY</string>
+    <string name="ring_unit_accuracy_unknown">ACCURACY UNKNOWN</string>
+    <string name="ring_chip_no_office">OFFICE NOT SET</string>
+    <string name="ring_chip_locating">GETTING GPS FIX</string>
+    <string name="ring_chip_unavailable">LOCATION UNAVAILABLE</string>
+    <string name="ring_chip_weak">WEAK GPS SIGNAL</string>
+    <string name="ring_chip_out_of_range">OUT OF RANGE</string>
+    <string name="ring_chip_in_range">IN RANGE</string>
+    <string name="ring_chip_marked">MARKED %1$s</string>
+    <string name="ring_helper_no_office">Your live distance to the office appears here once it is saved.</string>
+    <string name="ring_helper_locating">Distance updates as soon as a fix is available.</string>
+    <string name="ring_helper_unavailable">Couldn\'t start location updates. Leave and reopen this screen to try again.</string>
+    <string name="ring_helper_weak_stale">Location hasn\'t updated in the last 30 seconds. Check-in unlocks once a fresh, accurate fix arrives. Try moving near a window.</string>
+    <string name="ring_helper_weak_inaccurate">GPS accuracy is too low for a 50 m check. Check-in unlocks once a fresh, accurate fix arrives. Try moving near a window.</string>
+    <string name="ring_helper_out_of_range">Move within 50 meters of the saved office location to enable check-in.</string>
+    <string name="ring_helper_in_range">You are inside the 50 m radius. Mark Attendance is available.</string>
+    <string name="ring_helper_marked">Distance keeps updating while this screen is open.</string>
+    <string name="card_mark_button">Mark Attendance</string>
+    <string name="card_checking">Checking location…</string>
+    <string name="card_last_marked">Last marked: %1$s</string>
+    <string name="card_never_marked">NO ATTENDANCE MARKED YET</string>
+    <string name="card_marked_title">Attendance marked</string>
+    <string name="card_marked_detail">%1$s · %2$d m from office</string>
+    <string name="card_marked_saved">Saved on this device</string>
+    <string name="mark_error_load">Couldn\'t load your last attendance record.</string>
+</resources>

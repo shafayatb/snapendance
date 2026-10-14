@@ -15,4 +15,10 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+    <!-- Theme for the native Compose AttendanceActivity. Compose draws its own top bar, so the
+         platform action bar is removed. The window background is the design's background color
+         (#EEF2F7) so no white flash shows before the first Compose frame. Light only. -->
+    <style name="AttendanceTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/attendance_background</item>
+    </style>
 </resources>

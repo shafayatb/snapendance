@@ -1,6 +1,6 @@
 # Task 06: Tap-to-focus
 
-**Status:** Not started · **Depends on:** 04 · **Track:** Flutter camera
+**Depends on:** 04 · **Track:** Flutter camera
 
 ## Goal
 

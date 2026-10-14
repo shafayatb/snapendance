@@ -6,8 +6,8 @@
 2. The supplied assessment PDF for required behavior, platforms, reference UI, and deliverables.
 3. This product reference for the extracted requirements and the distinction between brief
    requirements and proposed choices.
-4. The [UI design](../design/README.md) for appearance and interaction details, including its
-   recorded deviations. It does not override required behavior.
+4. The UI design, `docs/design/README.md` (local only, not published), for appearance and
+   interaction details, including its recorded deviations. It does not override required behavior.
 5. The [task backlog](../tasks/README.md) for task order, scope, and acceptance criteria, then the
    approved task plan under `docs/plans/`, when it exists.
 6. The implementation, verification, delivery, and Git references.

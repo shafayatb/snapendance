@@ -5,16 +5,8 @@ criteria, verification, and the decisions its plan must settle. The **how** belo
 plan saved to `docs/plans/YYYY-MM-DD-<task>.md` when the task starts. A task file is not
 authorization to implement; work starts only when the user assigns the task.
 
-## Workflow per task
-
-1. The user assigns a task and creates its branch `feature/NN-<task-file-slug>` from `develop`.
-   Read `AGENTS.md`, the task file, and the references it lists.
-2. Inspect the current code, settle the task's open decisions, and write the plan. Get approval.
-3. Implement the plan's steps one at a time, test-first. After each step, stop at the commit
-   checkpoint so the user reviews the diff and commits before the next step. Verify on Android and
-   record evidence in `docs/agent-log.md`.
-4. Update the task's status below, write the review handoff and `FRESH_PROMPT.md`, suggest the
-   commit message(s), and stop. After review approval the user merges into `develop` (`--no-ff`).
+The per-task workflow is in the [delivery](../agent-reference/delivery.md) and
+[Git](../agent-reference/git.md) references.
 
 Acceptance criteria may be refined in the approved plan. If a plan changes a criterion, update the
 task file in the same task so this folder stays the current scope record.
@@ -23,22 +15,26 @@ task file in the same task so this folder stays the current scope record.
 
 | # | Task | Depends on | Status |
 |---|------|------------|--------|
-| 01 | [App shell and native attendance entry](01-app-shell-native-bridge.md) | - | Not started |
-| 02 | [Attendance: set office location](02-attendance-office-setup.md) | 01 | Not started |
-| 03 | [Attendance: live distance and marking](03-attendance-distance-marking.md) | 02 | Not started |
-| 04 | [Camera preview and lifecycle](04-camera-preview.md) | 01 | Not started |
-| 05 | [Camera zoom, lens, and flash controls](05-camera-zoom-controls.md) | 04 | Not started |
-| 06 | [Tap-to-focus](06-camera-tap-focus.md) | 04 | Not started |
-| 07 | [Capture and durable batches](07-capture-batches.md) | 04 | Not started |
-| 08 | [Sync engine and mock upload API](08-sync-engine.md) | 07 | Not started |
-| 09 | [Upload Manager screen](09-pending-uploads-screen.md) | 08 | Not started |
-| 10 | [Background sync and connectivity](10-background-sync.md) | 08, 09 | Not started |
-| 11 | [Submission](11-submission.md) | all | Not started |
+| 01 | [App shell and native attendance entry](01-app-shell-native-bridge.md) | - | Done |
+| 02 | [Attendance: set office location](02-attendance-office-setup.md) | 01 | Done |
+| 03 | [Attendance: live distance and marking](03-attendance-distance-marking.md) | 02 | Done |
+| 04 | [Camera preview and lifecycle](04-camera-preview.md) | 01 | Done |
+| 05 | [Camera zoom, lens, and flash controls](05-camera-zoom-controls.md) | 04 | Done |
+| 06 | [Tap-to-focus](06-camera-tap-focus.md) | 04 | Done |
+| 07 | [Capture and durable batches](07-capture-batches.md) | 04 | Done |
+| 08 | [Sync engine and mock upload API](08-sync-engine.md) | 07 | Done |
+| 09 | [Upload Manager screen](09-pending-uploads-screen.md) | 08 | Done |
+| 10 | [Background sync and connectivity](10-background-sync.md) | 08, 09 | Done |
+| 11 | [Submission](11-submission.md) | all | Done (publishing pending) |
+| 12 | Async failure handling ([plan](../plans/2026-10-14-12-async-failure-handling.md); fix task, no task file) | 04-10 | Done |
 
 Status values: `Not started`, `Planned` (plan approved), `In progress`, `In review`, `Done`.
+Update a task's status here as it moves; task files do not carry status.
 Tasks 02-03 (native) and 04-07 (Flutter camera) are independent tracks after task 01.
 
-Task 01 is assigned (2026-10-12); its fresh-context prompt is in the root `FRESH_PROMPT.md`.
+Tasks 01-12 are done; publishing (merge to `main`, `v1.0.0`, public repo, APK upload) is the user's step. Because of the 2026-10-14 20:00 deadline, the remaining work runs in a
+triaged mode (approved 2026-10-14): tasks 04-06 as one camera task and 07-10 as one uploads task,
+agent commits and merges, no per-step checkpoints, one review at the end.
 
 ## Approved decisions
 
@@ -55,17 +51,33 @@ Task 01 is assigned (2026-10-12); its fresh-context prompt is in the root `FRESH
 | 2026-10-12 | Local-only (gitignored): the brief PDF, `docs/design/`, `FRESH_PROMPT.md`. |
 | 2026-10-12 | Attendance: strict ≤ 50 m, no hysteresis; usable fix ≤ 30 s old and ≤ 25 m accuracy; coordinates panel, no map. |
 | 2026-10-12 | Uploads: grouped by batch; retry limit 5; mock timeout 30 s; mock simulation sheet from the camera settings icon. |
+| 2026-10-13 | Task 01: one `navigation` channel method `openAttendance`; IBM Plex bundled in Flutter and Android; Material Icons Rounded (Flutter) and Material Symbols Rounded vectors (Compose). See the task 01 plan, D1-D2 and D6-D7. |
+| 2026-10-14 | Task 03: live distance from one tracking request (1 s, no displacement filter); Mark Attendance re-checks with a fix taken after the tap; one mark per calendar day; distance rounded up for display. See the task 03 plan. |
+| 2026-10-14 | Deadline 2026-10-14 20:00: triaged mode (merged tasks 04-06 and 07-10, agent commits and merges, one final review). |
+| 2026-10-14 | Tasks 04-06 (camera): `permission_handler`; portrait-only app; first back camera at `veryHigh`, cover-cropped; zoom buttons from the real range (0.5× only below 1.0; the A04s shows 1×, 2×, 5×); flash Off/Auto/On only with a flash unit; no flip button; camera released when hidden or paused, reopened at 1× with flash off. See the camera plan, C1-C8. |
+| 2026-10-14 | Tasks 07-10 (uploads): one open batch frozen as queued on submit; `sqflite` `uploads.db` and images under the app documents directory, kept after upload; one-at-a-time claims with a 2-minute expiry; every attempt counts, limit 5; completion-only progress, no countdown; WorkManager unique one-off `upload-queue` (network constraint, exponential backoff from 30 s, `update` policy) plus a 15-minute periodic recovery task; manual Retry resets attempts; Remove for missing files; no Pause All; simulation sheet ships in release. See the uploads plan, U1-U13. |
+| 2026-10-14 | Task 11: release signed from an untracked `android/key.properties` (keystore outside the repo), debug-key fallback for clones; APK hosted on Google Drive by the user; no GitHub Release; Codex RTK import removed from `AGENTS.md`; local-only files referenced as plain text. See the submission plan, S1-S9. |
+| 2026-10-13 | Task 02: Fused Location Provider; first fix accepted within 15 s from a stream of updates; replacing a saved office needs confirmation; Preferences DataStore; the attendance screen is portrait-only for now. See the task 02 plan, D1-D2, D8, D10, and step 8. |
 
 ## Open decisions and owning task
 
-| Decision | Task |
-|----------|------|
-| Platform-channel shape; fonts and icons approach | 01 |
-| Location provider (fused vs. platform), re-setting the office | 02 |
-| Camera permission approach; how the device exposes ultra-wide (lens vs. zoom < 1.0) | 04 |
-| Lens button set, flash modes, whether the front-camera flip is included | 05 |
-| Batch model (open batch, freeze on submit), queue schema, storage location | 07 |
-| Backoff, simulated upload progress, whether the simulation sheet ships in release | 08 |
-| Remove action for missing-file items; Pause All inclusion | 09 |
-| Work scheduling (unique one-off + periodic fallback), connectivity indicator semantics | 10 |
-| Release signing and APK hosting | 11 |
+None.
+
+## Deferred improvements
+
+Found during a task, deliberately left for later. Pick one up only when the user assigns it.
+
+| Found in | Improvement | Why deferred |
+|----------|-------------|--------------|
+| 03 | Listen for location turned on/off on screen (`PROVIDERS_CHANGED_ACTION`, plan D8) instead of noticing at the 30 s stale check; show the last fix's age in the A9 helper. | Cut for the deadline. |
+| 04 | Switch between several physical back cameras (wide/ultra-wide/tele as separate cameras); today only the first back camera and its zoom range are used. | The A04s exposes one back camera; nothing to test it on. |
+| 07 | Drop the camera plugin's merged `RECORD_AUDIO` and `WRITE_EXTERNAL_STORAGE` permissions with `tools:node="remove"`; still capture needs neither. | Found late; needs a camera retest. |
+| 07 | Device-check the Timeout and Permanent-failure scenarios, swiping the app away and process recreation during a run, and the flash firing on capture. | Tests only so far; the lens was covered during the device runs. |
+| 07 | C9 "Photos already in this batch are kept" line on the Camera unavailable state. | Cut for the deadline. |
+| 12 | Zoom, flash, and focus restore the UI when the hardware call fails (today the UI shows the new value and the failure is ignored). | Rare; needs hardware retesting. |
+| 12 | Refresh "marked today" at midnight while the attendance screen stays open (today it updates on the next resume). | Edge case; reopening fixes it. |
+| 12 | Immutable list snapshots in the upload models; read only unfinished batches on each Upload Manager poll; split `camera_page.dart` and `upload_manager_page.dart` into smaller files. | Quality only; cut for the deadline. |
+| 12 | Ignore pinch, focus, and flash while a capture is saving, like the other controls. | Low impact. |
+| 12 | Await the previous camera's release before opening the next one; a quick return now opens while the old session is still closing. | Review P3, unconfirmed; four quick returns on the A04s each ended with the camera open. |
+| 12 | A camera permission left `USER_FIXED` from an earlier session reads as "denied" (Allow camera access does nothing) instead of "permanently denied" with Open settings. Seen on the A04s after `pm revoke`; not changed by task 12. | Found late; needs a permission-flow retest. |
+| 02 | Keep a running GPS fetch across Activity recreation (send `ScreenStopped` only when not `isChangingConfigurations`), then remove the portrait lock. Until then, a dark-mode, font-size, locale, or split-screen change still cancels a fetch silently, and Android 16 ignores the lock on screens ≥ 600 dp wide. | User chose the portrait lock for the deadline. |

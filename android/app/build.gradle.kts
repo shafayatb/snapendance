@@ -1,12 +1,21 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.plugin.compose")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.shafayatb.snapendance"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android 14.1 (camera permission) requires API 37 to compile against.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -15,23 +24,71 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.shafayatb.snapendance"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (!keystoreProperties.isEmpty) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Without android/key.properties (a fresh clone), release builds use the debug key.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
+
+    // The native attendance screen is Jetpack Compose.
+    buildFeatures {
+        compose = true
+    }
+}
+
+dependencies {
+    val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
+    implementation(composeBom)
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Device position for the office and attendance checks (Fused Location Provider).
+    implementation("com.google.android.gms:play-services-location:21.4.0")
+
+    // The saved office location (one small record).
+    implementation("androidx.datastore:datastore-preferences:1.2.1")
+
+    // AttendanceViewModel and viewModelScope.
+    implementation("androidx.lifecycle:lifecycle-viewmodel:2.10.0")
+    // collectAsStateWithLifecycle and LocalLifecycleOwner for the attendance screen.
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+
+    // JVM unit tests for attendance logic (run with testDebugUnitTest).
+    testImplementation("junit:junit:4.13.2")
+    // Matches the kotlinx-coroutines-core the app resolves (1.9.0), so tests run the same version.
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+
+    // Instrumented Compose UI tests (run on a device with connectedDebugAndroidTest).
+    androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    // Registers the empty Activity that createComposeRule() hosts content in (screen tests in
+    // tasks 02-03); the step 4 test runs inside AttendanceActivity instead. Debug manifest only.
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
 kotlin {

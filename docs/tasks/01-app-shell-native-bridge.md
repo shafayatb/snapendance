@@ -1,6 +1,6 @@
 # Task 01: App shell and native attendance entry
 
-**Status:** Not started · **Depends on:** - · **Track:** shared
+**Depends on:** - · **Track:** shared
 
 ## Goal
 

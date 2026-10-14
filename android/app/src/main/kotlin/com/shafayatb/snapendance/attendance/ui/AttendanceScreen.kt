@@ -1,0 +1,336 @@
+package com.shafayatb.snapendance.attendance.ui
+
+import android.Manifest
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
+import com.google.android.gms.location.Priority
+import com.shafayatb.snapendance.R
+import com.shafayatb.snapendance.attendance.ui.theme.AttendanceSpacing
+import com.shafayatb.snapendance.attendance.ui.theme.AttendanceTheme
+import kotlin.math.ceil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+@Composable
+fun AttendanceRoot(
+    viewModel: AttendanceViewModel,
+    onNavigateBack: () -> Unit,
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    val activity = LocalActivity.current
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        viewModel.onAction(
+            AttendanceAction.PermissionResult(
+                permission = context.locationPermission(),
+                shouldShowRationale = activity
+                    ?.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)
+                    ?: false,
+            ),
+        )
+    }
+
+    val requestPermission = {
+        permissionLauncher.launch(
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+        )
+    }
+    val recheckLocation = {
+        viewModel.onAction(AttendanceAction.ScreenResumed(context.locationPermission()))
+    }
+
+    val turnOnLocationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) {}
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { recheckLocation() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        viewModel.onAction(AttendanceAction.ScreenStopped)
+    }
+
+    ObserveAsEvents(viewModel.events) { event ->
+        val message = when (event) {
+            AttendanceEvent.RequestLocationPermission -> {
+                requestPermission()
+                return@ObserveAsEvents
+            }
+            AttendanceEvent.NoFix -> resources.getString(R.string.office_error_no_fix)
+            is AttendanceEvent.FixTooInaccurate -> event.bestAccuracyMeters?.let {
+                resources.getString(R.string.office_error_inaccurate, ceil(it).toInt())
+            } ?: resources.getString(R.string.office_error_inaccurate_unknown)
+            AttendanceEvent.FixStale -> resources.getString(R.string.office_error_stale)
+            AttendanceEvent.OfficeSaveFailed -> resources.getString(R.string.office_error_save)
+            AttendanceEvent.OfficeLoadFailed -> resources.getString(R.string.office_error_load)
+            is AttendanceEvent.MarkOutOfRange -> resources.getString(
+                R.string.mark_error_out_of_range,
+                ceil(event.distanceMeters).toInt(),
+            )
+            AttendanceEvent.MarkNoFix -> resources.getString(R.string.mark_error_no_fix)
+            AttendanceEvent.MarkSaveFailed -> resources.getString(R.string.mark_error_save)
+            AttendanceEvent.AttendanceLoadFailed -> resources.getString(R.string.mark_error_load)
+        }
+        val retryAction = when (event) {
+            AttendanceEvent.MarkNoFix, AttendanceEvent.MarkSaveFailed ->
+                AttendanceAction.MarkAttendanceClick
+            AttendanceEvent.OfficeLoadFailed, AttendanceEvent.AttendanceLoadFailed,
+            is AttendanceEvent.MarkOutOfRange -> null
+            else -> AttendanceAction.SetOfficeClick
+        }
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = retryAction?.let { resources.getString(R.string.office_retry) },
+                duration = SnackbarDuration.Long,
+            )
+            if (result == SnackbarResult.ActionPerformed && retryAction != null) {
+                viewModel.onAction(retryAction)
+            }
+        }
+    }
+
+    AttendanceScreen(
+        state = state,
+        onAction = viewModel::onAction,
+        onRecoveryClick = { blocker ->
+            when (blocker) {
+                is LocationBlocker.PermissionDenied -> if (blocker.canAskAgain) {
+                    viewModel.onAction(AttendanceAction.AllowLocationClick)
+                } else {
+                    context.openAppSettings()
+                }
+                is LocationBlocker.ApproximateOnly -> if (blocker.canAskAgain) {
+                    viewModel.onAction(AttendanceAction.AllowLocationClick)
+                } else {
+                    context.openAppSettings()
+                }
+                LocationBlocker.LocationServicesOff ->
+                    activity?.turnOnLocation(turnOnLocationLauncher, onAlreadyOn = recheckLocation)
+            }
+        },
+        onNavigateBack = onNavigateBack,
+        snackbarHostState = snackbarHostState,
+    )
+}
+
+@Composable
+fun AttendanceScreen(
+    state: AttendanceUiState,
+    onAction: (AttendanceAction) -> Unit,
+    onRecoveryClick: (LocationBlocker) -> Unit,
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
+    Scaffold(
+        modifier = modifier,
+        topBar = { AttendanceTopBar(onNavigateBack = onNavigateBack) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    start = AttendanceSpacing.md,
+                    top = AttendanceSpacing.xxs,
+                    end = AttendanceSpacing.md,
+                    bottom = AttendanceSpacing.md,
+                ),
+            verticalArrangement = Arrangement.spacedBy(AttendanceSpacing.lg),
+        ) {
+            OfficeContextCard(
+                office = state.office,
+                isOfficeLoaded = state.isOfficeLoaded,
+                fixAttempt = state.fixAttempt,
+                isBlocked = state.blocker != null,
+                onSetOfficeClick = { onAction(AttendanceAction.SetOfficeClick) },
+            )
+            val blocker = state.blocker
+            if (blocker != null) {
+                LocationIssuePanel(blocker = blocker, onRecoveryClick = { onRecoveryClick(blocker) })
+            } else {
+                DistanceRing(
+                    status = state.distance,
+                    markedAtEpochMillis = state.lastAttendance?.markedAtEpochMillis
+                        ?.takeIf { state.isMarkedToday },
+                )
+            }
+            AttendanceCard(
+                state = state,
+                onMarkClick = { onAction(AttendanceAction.MarkAttendanceClick) },
+            )
+        }
+    }
+
+    if (state.isReplaceConfirmationVisible) {
+        ReplaceOfficeDialog(
+            onConfirm = { onAction(AttendanceAction.ReplaceOfficeConfirm) },
+            onDismiss = { onAction(AttendanceAction.ReplaceOfficeDismiss) },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AttendanceTopBar(onNavigateBack: () -> Unit) {
+    TopAppBar(
+        title = { Text(stringResource(R.string.attendance_title)) },
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = stringResource(R.string.attendance_navigate_back),
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background,
+        ),
+    )
+}
+
+@Composable
+private fun ReplaceOfficeDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.office_replace_title)) },
+        text = { Text(stringResource(R.string.office_replace_body)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.office_replace_confirm)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.office_replace_cancel)) }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+    )
+}
+
+@Composable
+private fun <T> ObserveAsEvents(events: Flow<T>, onEvent: (T) -> Unit) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val currentOnEvent by rememberUpdatedState(onEvent)
+    LaunchedEffect(events, lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            withContext(Dispatchers.Main.immediate) {
+                events.collect { currentOnEvent(it) }
+            }
+        }
+    }
+}
+
+private fun Context.locationPermission(): LocationPermission = when {
+    isGranted(Manifest.permission.ACCESS_FINE_LOCATION) -> LocationPermission.Precise
+    isGranted(Manifest.permission.ACCESS_COARSE_LOCATION) -> LocationPermission.Approximate
+    else -> LocationPermission.None
+}
+
+private fun Context.isGranted(permission: String) =
+    ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
+private fun Context.openAppSettings() {
+    startSettings(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+}
+
+private fun Activity.turnOnLocation(
+    dialogLauncher: ActivityResultLauncher<IntentSenderRequest>,
+    onAlreadyOn: () -> Unit,
+) {
+    val request = LocationSettingsRequest.Builder()
+        .addLocationRequest(LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1_000L).build())
+        .build()
+    LocationServices.getSettingsClient(this).checkLocationSettings(request)
+        .addOnSuccessListener(this) { onAlreadyOn() }
+        .addOnFailureListener(this) { error ->
+            if (error is ResolvableApiException) {
+                dialogLauncher.launch(IntentSenderRequest.Builder(error.resolution).build())
+            } else {
+                startSettings(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            }
+        }
+}
+
+private fun Context.startSettings(intent: Intent) {
+    try {
+        startActivity(intent)
+    } catch (error: ActivityNotFoundException) {
+        startActivity(Intent(Settings.ACTION_SETTINGS))
+    }
+}
+
+@Preview(showBackground = true, widthDp = 412, heightDp = 915)
+@Composable
+private fun AttendanceScreenPreview() {
+    AttendanceTheme {
+        AttendanceScreen(
+            state = AttendanceUiState(isOfficeLoaded = true, isAttendanceLoaded = true),
+            onAction = {},
+            onRecoveryClick = {},
+            onNavigateBack = {},
+        )
+    }
+}
