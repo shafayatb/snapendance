@@ -484,7 +484,7 @@ void main() {
       verifyNever(() => cubit.setZoom(any()));
     });
 
-    testWidgets('a queued batch is announced', (tester) async {
+    testWidgets('a queued batch opens the Upload Manager', (tester) async {
       whenListen(
         batch,
         Stream.value(
@@ -496,12 +496,10 @@ void main() {
         initialState: const BatchState(openCount: 2),
       );
       await showCamera(tester, CameraStatus.ready, state: ready);
+      await tester.pumpAndSettle();
 
-      expect(find.text('Batch of 2 photos queued'), findsOneWidget);
-      expect(
-        find.text('Uploads retry automatically when online.'),
-        findsOneWidget,
-      );
+      expect(find.text('Upload Manager'), findsOneWidget);
+      expect(find.text('Batch of 2 photos queued'), findsNothing);
     });
 
     testWidgets('a failed capture is reported', (tester) async {
