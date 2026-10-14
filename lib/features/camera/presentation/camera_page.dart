@@ -544,7 +544,7 @@ class _AnimatedFocusRingState extends State<_AnimatedFocusRing>
 class _TopBar extends StatelessWidget {
   const _TopBar({this.live = false});
 
-  /// The camera is open: the upload and flash buttons are shown.
+  /// The camera is open: the flash button is shown.
   final bool live;
 
   @override
@@ -573,17 +573,15 @@ class _TopBar extends StatelessWidget {
                   onPressed: () => Navigator.of(context).maybePop(),
                 ),
                 const Spacer(),
-                if (live) ...[
-                  const _UploadsButton(),
-                  const SizedBox(width: 8),
-                  const _FlashButton(),
-                  const SizedBox(width: 8),
-                  _RoundButton(
-                    icon: Icons.settings_rounded,
-                    tooltip: 'Upload simulation',
-                    onPressed: () => showSimulationSheet(context),
-                  ),
-                ],
+                // Uploads stay reachable when the camera is blocked or still starting.
+                const _UploadsButton(),
+                const SizedBox(width: 8),
+                if (live) ...[const _FlashButton(), const SizedBox(width: 8)],
+                _RoundButton(
+                  icon: Icons.settings_rounded,
+                  tooltip: 'Upload simulation',
+                  onPressed: () => showSimulationSheet(context),
+                ),
               ],
             ),
           ),

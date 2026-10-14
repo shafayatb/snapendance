@@ -571,6 +571,27 @@ void main() {
       expect(find.text('Nothing waiting to upload'), findsOneWidget);
     });
 
+    for (final status in [
+      CameraStatus.permissionDenied,
+      CameraStatus.permissionPermanentlyDenied,
+      CameraStatus.unavailable,
+    ]) {
+      testWidgets('pending uploads stay reachable when $status', (
+        tester,
+      ) async {
+        await showCamera(
+          tester,
+          status,
+          batchState: const BatchState(pendingCount: 3),
+        );
+
+        await tester.tap(find.bySemanticsLabel('Upload Manager, 3 pending'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Upload Manager'), findsOneWidget);
+      });
+    }
+
     testWidgets('the camera is released while the Upload Manager is open', (
       tester,
     ) async {
