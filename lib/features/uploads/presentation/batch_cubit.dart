@@ -69,7 +69,7 @@ class BatchCubit extends Cubit<BatchState> {
     try {
       await _repository.addCapture(await takePicture());
     } on Exception {
-      // Includes CameraCaptureException, CaptureSaveException, and database errors.
+      // CameraCaptureException, CaptureSaveException, or anything unexpected from storage.
       return _notify(BatchNoticeKind.captureFailed);
     }
     try {

@@ -52,6 +52,8 @@ class PluginCameraService implements CameraService {
       cameras = await availableCameras();
     } on CameraException catch (error) {
       throw CameraUnavailableException(error.description ?? error.code);
+    } on PlatformException catch (error) {
+      throw CameraUnavailableException(error.message ?? error.code);
     }
     final back = cameras.where(
       (c) => c.lensDirection == CameraLensDirection.back,

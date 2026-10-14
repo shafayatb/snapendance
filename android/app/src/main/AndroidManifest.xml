@@ -6,7 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Optional, so the app also installs without a camera; the camera screen then shows its
-         unavailable state. Still photos only, so no microphone permission. -->
+         unavailable state. Still photos only: the app never asks for the microphone, although
+         the camera plugin's manifest still merges RECORD_AUDIO. -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <!-- Background uploads use WorkManager, which adds what it needs (network state, wake lock,
          boot). The workmanager plugin also asks for these two, for debug notifications and

@@ -185,7 +185,8 @@ class CameraCubit extends Cubit<CameraState> {
       maxZoom: state.maxZoom,
     );
     emit(state.copyWith(zoom: clamped));
-    // The newest value wins; a failed call leaves the preview at its last zoom.
+    // Not awaited, so a pinch stays smooth. A failed call is ignored and the preview keeps its
+    // last zoom.
     session.setZoom(clamped).ignore();
   }
 
