@@ -73,16 +73,32 @@ Future<bool> runUploadWork(
   }
 }
 
+/// Opens the worker's storage and runs [runUploadWork]. A storage that cannot open also asks
+/// for a retry, since a thrown error would end the work for good.
+Future<bool> runUploadTask(
+  Future<UploadQueueRepository> Function() openRepository,
+) async {
+  final UploadQueueRepository repository;
+  try {
+    repository = await openRepository();
+  } on Object catch (error) {
+    debugPrint('Opening upload storage failed, will retry: $error');
+    return false;
+  }
+  return runUploadWork(repository);
+}
+
 /// WorkManager's entry point. It may run in a fresh background isolate, so it builds its own
 /// database, file, and API dependencies; it shares nothing with the UI.
 @pragma('vm:entry-point')
 void uploadCallbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    // Left open: sqflite may share the native connection with the app's own isolate.
-    final repository = UploadQueueRepository(
-      await openUploadDatabase(),
-      await CaptureFiles.appDocuments(),
-    );
-    return runUploadWork(repository);
-  });
+  Workmanager().executeTask(
+    (task, inputData) => runUploadTask(
+      // Left open: sqflite may share the native connection with the app's own isolate.
+      () async => UploadQueueRepository(
+        await openUploadDatabase(),
+        await CaptureFiles.appDocuments(),
+      ),
+    ),
+  );
 }
