@@ -203,4 +203,42 @@ void main() {
       verify: (cubit) => expect(cubit.state.link, ConnectionLink.stable),
     );
   });
+
+  group('storage errors', () {
+    blocTest<UploadsCubit, UploadsState>(
+      'a failed load keeps the list shown',
+      build: () => UploadsCubit(repository, scheduler, connectivity),
+      act: (cubit) async {
+        await cubit.load();
+        await db.close();
+        await expectLater(cubit.load(), completes);
+      },
+      verify: (cubit) => expect(cubit.state.total, 3),
+    );
+
+    blocTest<UploadsCubit, UploadsState>(
+      'a failed retry is reported',
+      build: () => UploadsCubit(repository, scheduler, connectivity),
+      act: (cubit) async {
+        await cubit.load();
+        await db.close();
+        await cubit.retry(first.first.id);
+      },
+      verify: (cubit) {
+        expect(cubit.state.failedActions, 1);
+        expect(cubit.state.total, 3);
+      },
+    );
+
+    blocTest<UploadsCubit, UploadsState>(
+      'a failed remove is reported',
+      build: () => UploadsCubit(repository, scheduler, connectivity),
+      act: (cubit) async {
+        await cubit.load();
+        await db.close();
+        await cubit.remove(second.single.id);
+      },
+      verify: (cubit) => expect(cubit.state.failedActions, 1),
+    );
+  });
 }

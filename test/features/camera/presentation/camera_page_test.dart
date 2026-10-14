@@ -519,6 +519,22 @@ void main() {
       expect(find.text('Couldn’t save the photo. Try again.'), findsOneWidget);
     });
 
+    testWidgets('a failed submit is reported', (tester) async {
+      whenListen(
+        batch,
+        Stream.value(
+          const BatchState(
+            openCount: 2,
+            notice: BatchNotice(BatchNoticeKind.submitFailed, 1),
+          ),
+        ),
+        initialState: const BatchState(openCount: 2),
+      );
+      await showCamera(tester, CameraStatus.ready, state: ready);
+
+      expect(find.text('Couldn’t queue the batch. Try again.'), findsOneWidget);
+    });
+
     testWidgets('the cloud icon shows the pending count', (tester) async {
       await showCamera(
         tester,

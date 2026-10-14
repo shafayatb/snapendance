@@ -20,6 +20,7 @@ class UploadsState extends Equatable {
     this.loaded = false,
     this.batches = const [],
     this.link = ConnectionLink.stable,
+    this.failedActions = 0,
   });
 
   final bool loaded;
@@ -27,6 +28,9 @@ class UploadsState extends Equatable {
   /// Newest first; a batch leaves the list once every item is uploaded.
   final List<QueuedBatch> batches;
   final ConnectionLink link;
+
+  /// Retry or Remove taps that could not be stored; each new one shows a message.
+  final int failedActions;
 
   Iterable<UploadItem> get _items => batches.expand((batch) => batch.items);
 
@@ -44,5 +48,5 @@ class UploadsState extends Equatable {
       _items.where((item) => item.status == status).length;
 
   @override
-  List<Object> get props => [loaded, batches, link];
+  List<Object> get props => [loaded, batches, link, failedActions];
 }

@@ -111,6 +111,14 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
           ),
           const Duration(seconds: 3),
         );
+      case BatchNoticeKind.submitFailed:
+        _showTopMessage(
+          const _Toast(
+            icon: Icons.error_outline_rounded,
+            text: 'Couldn’t queue the batch. Try again.',
+          ),
+          const Duration(seconds: 3),
+        );
       case BatchNoticeKind.emptyBatch:
         _showTopMessage(
           const _Toast(
