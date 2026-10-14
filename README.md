@@ -5,8 +5,8 @@ It combines two features in one APK:
 
 - **Geo-fenced attendance** (native Kotlin + Jetpack Compose). Save the office location from the
   phone's GPS, watch the live distance to it, and mark attendance only within 50 meters.
-- **Camera and resilient uploads** (Flutter). A custom camera with pinch zoom, a zoom slider, lens
-  zoom presets, flash, and tap-to-focus captures photos into batches. Submitted batches go into a
+- **Camera and resilient uploads** (Flutter). A custom camera with pinch zoom, a zoom slider, zoom
+  presets, flash, and tap-to-focus captures photos into batches. Submitted batches go into a
   durable queue that uploads in the background, survives restarts, and retries automatically when
   the network returns.
 
@@ -76,7 +76,7 @@ network. Widgets and composables never touch the database, files, GPS, or upload
 
 | Cubit | Owns | Main intents |
 |-------|------|--------------|
-| `CameraCubit` | Camera lifecycle and controls: permission (denied / permanently denied), no camera, opening, ready, error; zoom within the camera's real range; flash Off/Auto/On (only with a flash unit); the focus marker. Releases the camera when the app pauses or the Upload Manager covers it and reopens it on return. | `start`, `retry`, `appPaused`/`appResumed`, `screenCovered`/`screenUncovered`, `setZoom`, `pinchStarted`/`pinchUpdated`, `cycleFlash`, `tapToFocus` |
+| `CameraCubit` | Camera lifecycle and controls: initializing, permission denied or permanently denied (with Open settings), unavailable (no camera or it failed to open), ready; zoom within the camera's real range; flash Off/Auto/On (only with a flash unit); the focus marker. Releases the camera when the app pauses or the Upload Manager covers it and reopens it on return. | `start`, `retry`, `appPaused`/`appResumed`, `screenCovered`/`screenUncovered`, `setZoom`, `pinchStarted`/`pinchUpdated`, `cycleFlash`, `tapToFocus` |
 | `BatchCubit` | The open batch being captured: photo count and last thumbnail, saving state, notices (capture failed, batch queued, empty batch). Submitting freezes the batch as queued and schedules the upload work. | `load`, `capture`, `submit`, `setScenario` (mock API), `appResumed` |
 | `UploadsCubit` | The Upload Manager: queued batches with per-photo status (pending, uploading, retrying, uploaded, failed), attempt counts, last errors, and a connectivity hint. Polls the database while visible. | `start`, `load`, `retry`, `remove`, `appResumed` |
 
@@ -101,7 +101,8 @@ fixes each have their own message and action.
 - The sync engine claims one photo at a time (claims expire after 2 minutes, so a killed run never
   leaves a photo stuck in "uploading"), calls the API, and records the result. Every attempt counts;
   after 5 the photo is **failed** and waits for a manual **Retry**, which resets its attempts.
-  A photo whose file has disappeared is failed with "Local file missing" and can be removed.
+  A permanent rejection fails the photo at once, and a photo whose file has disappeared is failed
+  with "Local file missing" and can be removed.
 - The upload API does not exist, so it is a mock (`MockUploadApi`) with repeatable scenarios:
   success, fail once, timeout (30 s), no network, and permanent failure. Choose one from the
   **MOCK API** sheet behind the camera's settings icon; the choice persists and applies to
@@ -111,10 +112,11 @@ fixes each have their own message and action.
 
 The app was built with **Claude Code** (Claude Opus 5.5) for requirements analysis, planning,
 project rules, and implementation, and **Claude Design** for the UI design. The developer set the
-rules, approved every plan and decision, and reviewed the work; tests were written first and the
-app was checked on a physical phone after each task. The full record, with each session's prompts,
-decisions, and evidence, is in [`docs/agent-log.md`](docs/agent-log.md). The essential prompts,
-quoted as typed:
+rules, approved every plan and decision, and reviewed the work; tests were written first, and each
+task was run on Android (the Galaxy A04s, or an emulator with test locations for task 03). The final
+release build was then exercised end to end on the phone. The full record, with each session's
+prompts, decisions, and evidence, is in [`docs/agent-log.md`](docs/agent-log.md). A selection of the
+essential prompts, quoted as typed:
 
 **Requirements review and task breakdown**
 
@@ -161,8 +163,9 @@ quoted as typed:
 
 How the work was organized: [`AGENTS.md`](AGENTS.md) holds the agent rules, `docs/tasks/` the
 backlog, and `docs/plans/` one approved plan per task. Claude Code hooks in `.claude/` block edits to
-protected files and run `dart format` and `dart analyze` after Dart edits. Each finished task was
-checked by a separate read-only review agent before merging.
+protected files and run `dart format` and `dart analyze` after Dart edits. A separate read-only
+review agent checked tasks 01, 02, and the failure-handling fix; to meet the deadline, tasks 03-10
+were merged without one, and a final review covered the submission.
 
 ## How to run
 
@@ -184,7 +187,16 @@ flutter build apk --release       # build/app/outputs/flutter-apk/app-release.ap
 
 Release builds are signed with the key in `android/key.properties` when that file exists (it is
 gitignored). Without it, a clone's release build is signed with the local debug key, so the command
-above works as is.
+above works as is. To sign with your own key, create `android/key.properties`:
+
+```properties
+storeFile=/absolute/path/to/upload-keystore.jks
+storePassword=...
+keyAlias=upload
+keyPassword=...
+```
+
+A relative `storeFile` is resolved from `android/app/`.
 
 ### Tests
 
@@ -193,6 +205,9 @@ flutter analyze
 flutter test                                       # Flutter unit and widget tests
 cd android && ./gradlew :app:testDebugUnitTest     # native attendance unit tests
 ```
+
+`android/gradlew` is generated by the first `flutter run` or `flutter build`, so run one of those
+before the Gradle command in a fresh clone.
 
 ### Permissions
 
@@ -206,8 +221,10 @@ cd android && ./gradlew :app:testDebugUnitTest     # native attendance unit test
    ring shows you within 50 m.
 2. **Camera & Uploads:** capture photos, tap **UPLOAD BATCH** to queue the batch, and watch it in
    the Upload Manager (cloud icon). Start another batch at any time.
-3. **Offline test:** pick a scenario in the MOCK API sheet (settings icon), or turn on airplane mode,
-   submit a batch, then turn the network back on. The queued photos upload without opening the app.
+3. **Offline test:** turn on airplane mode, submit a batch, then turn the network back on. The
+   queued photos upload without opening the app.
+4. **Failure test:** pick a scenario in the MOCK API sheet (settings icon) and submit a batch.
+   The scenario stays until you switch back to **Success**.
 
 ## Background uploads: what to expect
 
@@ -235,4 +252,19 @@ cd android && ./gradlew :app:testDebugUnitTest     # native attendance unit test
   still capture needs neither.
 - iOS is not supported (`ios/` is unused starter scaffolding).
 
-Tested on a Samsung Galaxy A04s (Android 14).
+### Not verified on a device
+
+These are covered by automated tests only, or not at all:
+
+- Swiping the app away from Recents, or the process being recreated, while uploads are running.
+- The Timeout and Permanent-failure mock scenarios, and manual **Retry** and **Remove** in the
+  Upload Manager.
+- The flash firing during capture.
+- The start-up error screen (database cannot open) and the storage-error messages.
+- The attendance 10 s no-fix message, and large font scales.
+
+Tested on a Samsung Galaxy A04s (Android 14) with the signed release APK: location permission
+denied and granted, office saved, weak GPS blocking a mark, a mark at 29 m, location services off,
+out of range at 67 m, camera permission denied and granted, pinch, slider, presets, tap focus,
+flash modes, several batches, offline queueing with automatic upload in the foreground and in the
+background, and the Fail-once scenario retrying after backoff.
